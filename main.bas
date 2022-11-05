@@ -1,7 +1,7 @@
-DefInt A-Z
+DEFINT A-Z
 '--- DECLARE ---
-declare sub Refresh (x, y, z, w, col)
-declare sub Desktop
+DECLARE SUB Refresh (x, y, z, w, col)
+DECLARE SUB sub Desktop ()
 '$INCLUDE: 'logo.bi'
 
 '--- CONSTANTS ---
@@ -40,6 +40,7 @@ End
 '#####################################
 
 Sub Desktop
+	'Bitmap for testing purposes
     For j = 0 To 205
         For i = 0 To 87
             Read c
@@ -65,6 +66,5 @@ End Sub
 ' Remember to load all the files in QB.EXE when
 ' compiling for MS-DOS.
 
-'$INCLUDE: 'wrint.bas'
 '$INCLUDE: 'mouse.bas'
 '$INCLUDE: 'gui.bas'
