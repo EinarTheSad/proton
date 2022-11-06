@@ -1,36 +1,27 @@
-DEFINT A-Z
 '--- DECLARE ---
 DECLARE SUB Refresh (x, y, z, w, col)
-DECLARE SUB sub Desktop ()
-'$INCLUDE: 'logo.bi'
-
-'--- CONSTANTS ---
-Const ATTRIB.BOLD = 1, ATTRIB.UNDERLINE = 2, ATTRIB.ITALICS = 4
-Const ALIGN.CENTER = -1, ALIGN.RIGHT = -2
-
-'--- COMMON VARS ---
-Common Shared B, H, V
-Common Shared PID As String
+DECLARE SUB Desktop ()
+'$INCLUDE: 'vars.bas'
 
 Screen 9, , 1, 0
 Refresh 0, 0, 639, 349, 3
-
-MsgBox "$bEinar's DOS Development Platform$b reporting on duty.", 90, 80, "Acknowledged"
-mouse 1
+mouse 1 'Show the cursor
+PCopy 1, 0 'Initial empty screen, so we know it's loading
 
 '--- MAIN LOOP ---
 Do
     mouse 3 'Track mouse
-    Select Case PID
-        Case "MsgBox"
-            If B = 1 Then
-                End
-            End If
-    End Select
-Loop Until InKey$ = "q"
+    MsgBox "$bProton 0.23$b reporting on duty.", 120, 100, "Acknowledged", 1
+    Taskmgr 'Run the task manager
+Loop Until InKey$ = "q" ' Temporary escape
 
-End
 '--- MAIN CODE ENDS HERE ---
+
+'--- SUB INCLUDES (for QB64 debug purposes) ---
+' Remember to load all the files in QB.EXE when
+' compiling for MS-DOS.
+
+'$INCLUDE: 'gui.bas'
 
 '--- SUBS ---
 '#####################################
@@ -39,32 +30,12 @@ End
 '# separate files in a humane way!   #
 '#####################################
 
-Sub Desktop
-	'Bitmap for testing purposes
-    For j = 0 To 205
-        For i = 0 To 87
-            Read c
-            PSet (i, j), c
-        Next i
-    Next j
-
-    DrawIcon 8, 308, "comp"
-    DrawIcon 48, 308, "i"
-End Sub
-
-Sub Refresh (x, y, z, w, col)
-    'Any code that draws the desktop shall be put here
-    View (x, y)-(z, w)
-    Cls
-    Paint (1, 1), col
-    Desktop
+Sub Taskmgr
+    If ProcNum < 10 Then
+        GiveControl = ProcNum
+        ProcNum = ProcNum + 1
+    Else
+        ProcNum = 0
+    End If
     PCopy 1, 0
-    View (0, 0)-(639, 349)
 End Sub
-
-'--- SUB INCLUDES (for QB64 debug purposes) ---
-' Remember to load all the files in QB.EXE when
-' compiling for MS-DOS.
-
-'$INCLUDE: 'mouse.bas'
-'$INCLUDE: 'gui.bas'
