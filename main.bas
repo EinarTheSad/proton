@@ -1,3 +1,4 @@
+DefInt A-Z
 '--- DECLARE ---
 DECLARE SUB Taskmgr ()
 DECLARE SUB Refresh (x, y, z, w, col)
@@ -9,17 +10,16 @@ DECLARE SUB DrawIcon (x%, y%, name$)
 DECLARE SUB wrint (txt$, x, y, c, FontFile$, Attribs%)
 DECLARE SUB mouse (Funk)
 
-'$INCLUDE: '.\logo.bi'
+'$INCLUDE: 'logo.bi'
 
 '--- CONSTANTS ---
 Const ATTRIB.BOLD = 1, ATTRIB.UNDERLINE = 2, ATTRIB.ITALICS = 4
 Const ALIGN.CENTER = -1, ALIGN.RIGHT = -2
 
 '--- COMMON VARS ---
-DefInt A-Z
 Common Shared B, H, V
 Common Shared GiveControl%, ProcNum%
-Common Shared Drawn(): Dim Drawn(10) As Integer
+Dim Shared Drawn(10) As Integer
 
 Screen 9, , 1, 0
 Refresh 0, 0, 639, 349, 3
@@ -43,17 +43,16 @@ Type FontCharInfo
     FileOffset As Long
 End Type
 
-Sub Taskmgr ()
-    If ProcNum < 10 Then
-        GiveControl = ProcNum
-        ProcNum = ProcNum + 1
-    Else
-        ProcNum = 0
+Sub Button (bx, by, bwidth, bheight, btext$, bcolor)
+    Line (bx, by)-(bx + bwidth, by + bheight), bcolor, BF
+    Line (bx, by)-(bx + bwidth, by + bheight), 0, B
+    Line (bx + 1, by)-(bx + bwidth - 1, by + bheight - 1), 8, B
+    If btext$ <> "" Then
+        wrint btext$, bx + 8, by, 0, "arial", 0
     End If
-    PCopy 1, 0
 End Sub
 
-Sub Desktop ()
+Sub Desktop
     'Bitmap for testing purposes
     View (272, 72)-(639, 349)
     For j = 0 To 205
@@ -66,49 +65,6 @@ Sub Desktop ()
     View (0, 0)-(639, 349)
     DrawIcon 8, 308, "comp"
     DrawIcon 48, 308, "i"
-End Sub
-
-Sub Refresh (x, y, z, w, col)
-    'Any code that draws the desktop shall be put here
-    View (x, y)-(z, w)
-    Cls: Paint (1, 1), col
-    Desktop
-    PCopy 1, 0
-    View (0, 0)-(639, 349)
-End Sub
-
-Sub Button (bx, by, bwidth, bheight, btext$, bcolor)
-    Line (bx, by)-(bx + bwidth, by + bheight), bcolor, BF
-    Line (bx, by)-(bx + bwidth, by + bheight), 0, B
-    Line (bx + 1, by)-(bx + bwidth - 1, by + bheight - 1), 8, B
-    If btext$ <> "" Then
-        wrint btext$, bx + 8, by, 0, "arial", 0
-    End If
-End Sub
-
-Sub Form (wx, wy, wwidth, wheight)
-    Line (wx, wy)-(wx + wwidth, wy + wheight), 15, BF
-    Line (wx, wy)-(wx + wwidth, wy + wheight), 8, B
-    Line (wx + 1, wy + 1)-(wx + wwidth - 1, wy + wheight - 1), 7, B
-End Sub
-
-Sub MsgBox (prompt$, x, y, buttontext$, PID)
-    If Drawn(PID) = 0 Then
-        windowlength = (Len(prompt$) * 5.58) + 60
-        buttonlength = Len(buttontext$) * 5.58 + 32
-        Form x, y, windowlength, 65
-        DrawIcon x + 10, y + 5, "i"
-        wrint prompt$, x + 46, y + 13, 0, "arial", 0
-        Button ((x + windowlength / 2) - buttonlength / 2), y + 40, buttonlength, 16, buttontext$, 7
-        Drawn(PID) = 1
-    Else
-        'Task manager part
-        If GiveControl = PID Then
-            If B = 1 Then
-                Refresh 0, 0, 639, 349, 3
-            End If
-        End If
-    End If
 End Sub
 
 Sub DrawIcon (x%, y%, name$)
@@ -149,6 +105,67 @@ Sub DrawIcon (x%, y%, name$)
             PSet (12, 9), 7
     End Select
     View (0, 0)-(639, 349)
+End Sub
+
+Sub Form (wx, wy, wwidth, wheight)
+    Line (wx, wy)-(wx + wwidth, wy + wheight), 15, BF
+    Line (wx, wy)-(wx + wwidth, wy + wheight), 8, B
+    Line (wx + 1, wy + 1)-(wx + wwidth - 1, wy + wheight - 1), 7, B
+End Sub
+
+Sub mouse (Funk) Static
+    Static Crsr
+    If Funk = 1 Then Crsr = 1
+    If Funk = 2 And Crsr = 0 Then Exit Sub
+    If Funk = 2 And Crsr = 1 Then: Crsr = 0
+    Poke 100, 184: Poke 101, Funk: Poke 102, 0
+    Poke 103, 205: Poke 104, 51: Poke 105, 137
+    Poke 106, 30: Poke 107, 170: Poke 108, 10
+    Poke 109, 137: Poke 110, 14: Poke 111, 187
+    Poke 112, 11: Poke 113, 137: Poke 114, 22
+    Poke 115, 204: Poke 116, 12: Poke 117, 203
+    Call Absolute(100)
+    B = Peek(&HAAA)
+    H = (Peek(&HBBB) + Peek(&HBBC) * 256)
+    V = (Peek(&HCCC) + Peek(&HCCD) * 256)
+End Sub
+
+Sub MsgBox (prompt$, x, y, buttontext$, PID)
+    If Drawn(PID) = 0 Then
+        windowlength = (Len(prompt$) * 5.58) + 60
+        buttonlength = Len(buttontext$) * 5.58 + 32
+        Form x, y, windowlength, 65
+        DrawIcon x + 10, y + 5, "i"
+        wrint prompt$, x + 46, y + 13, 0, "arial", 0
+        Button ((x + windowlength / 2) - buttonlength / 2), y + 40, buttonlength, 16, buttontext$, 7
+        Drawn(PID) = 1
+    Else
+        'Task manager part
+        If GiveControl = PID Then
+            If B = 1 Then
+                Refresh 0, 0, 639, 349, 3
+            End If
+        End If
+    End If
+End Sub
+
+Sub Refresh (x, y, z, w, col)
+    'Any code that draws the desktop shall be put here
+    View (x, y)-(z, w)
+    Cls: Paint (1, 1), col
+    Desktop
+    PCopy 1, 0
+    View (0, 0)-(639, 349)
+End Sub
+
+Sub Taskmgr
+    If ProcNum < 10 Then
+        GiveControl = ProcNum
+        ProcNum = ProcNum + 1
+    Else
+        ProcNum = 0
+    End If
+    PCopy 1, 0
 End Sub
 
 Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
@@ -360,19 +377,3 @@ Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
 
 End Sub
 
-Sub mouse (Funk) Static
-    Static Crsr
-    If Funk = 1 Then Crsr = 1
-    If Funk = 2 And Crsr = 0 Then Exit Sub
-    If Funk = 2 And Crsr = 1 Then: Crsr = 0
-    Poke 100, 184: Poke 101, Funk: Poke 102, 0
-    Poke 103, 205: Poke 104, 51: Poke 105, 137
-    Poke 106, 30: Poke 107, 170: Poke 108, 10
-    Poke 109, 137: Poke 110, 14: Poke 111, 187
-    Poke 112, 11: Poke 113, 137: Poke 114, 22
-    Poke 115, 204: Poke 116, 12: Poke 117, 203
-    Call Absolute(100)
-    B = Peek(&HAAA)
-    H = (Peek(&HBBB) + Peek(&HBBC) * 256)
-    V = (Peek(&HCCC) + Peek(&HCCD) * 256)
-End Sub
