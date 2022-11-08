@@ -1,174 +1,173 @@
-DefInt A-Z
+DEFINT A-Z
 '--- DECLARE ---
+DECLARE SUB mouse (Funk)
 DECLARE SUB Taskmgr ()
-DECLARE SUB Refresh (x, y, z, w, col)
+DECLARE SUB Refresh (col%)
 DECLARE SUB Desktop ()
 DECLARE SUB Button (bx, by, bwidth, bheight, btext$, bcolor)
 DECLARE SUB Form (wx, wy, wwidth, wheight)
 DECLARE SUB MsgBox (prompt$, x, y, buttontext$, PID)
 DECLARE SUB DrawIcon (x%, y%, name$)
 DECLARE SUB wrint (txt$, x, y, c, FontFile$, Attribs%)
-DECLARE SUB mouse (Funk)
-
-'$INCLUDE: 'logo.bi'
+DECLARE SUB BMLoad (bitmap$, x, y, z, w)
 
 '--- CONSTANTS ---
-Const ATTRIB.BOLD = 1, ATTRIB.UNDERLINE = 2, ATTRIB.ITALICS = 4
-Const ALIGN.CENTER = -1, ALIGN.RIGHT = -2
+CONST ATTRIB.BOLD = 1, ATTRIB.UNDERLINE = 2, ATTRIB.ITALICS = 4
+CONST ALIGN.CENTER = -1, ALIGN.RIGHT = -2
 
 '--- COMMON VARS ---
-Common Shared B, H, V
-Common Shared GiveControl%, ProcNum%
-Dim Shared Drawn(10) As Integer
+COMMON SHARED B, H, V
+COMMON SHARED GiveControl%, ProcNum%
+DIM SHARED Drawn(10) AS INTEGER
 
-Screen 9, , 1, 0
-Refresh 0, 0, 639, 349, 3
-mouse 1 'Show the cursor
-PCopy 1, 0 'Initial empty screen, so we know it's loading
+SCREEN 9, , 1, 0
+Refresh 3
 
 '--- MAIN LOOP ---
-Do
+DO
     mouse 3 'Track mouse
     MsgBox "$bProton 0.23$b reporting on duty.", 120, 100, "Acknowledged", 1
     Taskmgr 'Run the task manager
-Loop Until InKey$ = "q" ' Temporary escape
+LOOP UNTIL INKEY$ = "q" ' Temporary escape
 
 '--- MAIN CODE ENDS HERE ---
 
 '--- SUBS ---
 
-Type FontCharInfo
-    CharWidth As Integer
-    CharHeight As Integer
-    FileOffset As Long
-End Type
+TYPE FontCharInfo
+    CharWidth AS INTEGER
+    CharHeight AS INTEGER
+    FileOffset AS LONG
+END TYPE
 
-Sub Button (bx, by, bwidth, bheight, btext$, bcolor)
-    Line (bx, by)-(bx + bwidth, by + bheight), bcolor, BF
-    Line (bx, by)-(bx + bwidth, by + bheight), 0, B
-    Line (bx + 1, by)-(bx + bwidth - 1, by + bheight - 1), 8, B
-    If btext$ <> "" Then
+SUB BMLoad (bitmap$, x, y, z, w)
+    bsaveSize = z * w / 2
+    DIM load(bsaveSize) AS INTEGER
+    DEF SEG = VARSEG(load(0))
+    BLOAD bitmap$ + ".put", VARPTR(load(0))
+    PUT (x, y), load, PSET
+    DEF SEG
+END SUB
+
+SUB Button (bx, by, bwidth, bheight, btext$, bcolor)
+    LINE (bx, by)-(bx + bwidth, by + bheight), bcolor, BF
+    LINE (bx, by)-(bx + bwidth, by + bheight), 0, B
+    LINE (bx + 1, by)-(bx + bwidth - 1, by + bheight - 1), 8, B
+    IF btext$ <> "" THEN
         wrint btext$, bx + 8, by, 0, "arial", 0
-    End If
-End Sub
+    END IF
+END SUB
 
-Sub Desktop
+SUB Desktop
     'Bitmap for testing purposes
-    View (272, 72)-(639, 349)
-    For j = 0 To 205
-        For i = 0 To 87
-            Read c
-            PSet (i, j), c
-        Next i
-    Next j
-    Restore LOGO
-    View (0, 0)-(639, 349)
+    BMLoad "logo", 272, 72, 88, 206
+    'Icons
     DrawIcon 8, 308, "comp"
     DrawIcon 48, 308, "i"
-End Sub
+END SUB
 
-Sub DrawIcon (x%, y%, name$)
-    View (x, y)-(x + 31, y + 31)
-    Select Case name$
-        Case "i"
-            Circle (15, 15), 12, 0, , , .7
-            Line (21, 23)-(26, 25), 0
-            Line (25, 21)-(26, 25), 0
-            Paint (16, 16), 15, 0: Paint (24, 23), 15, 0
-            Line (21, 22)-(24, 21), 7
-            Line (10, 22)-(20, 22), 7
-            Line (14, 14)-(16, 19), 3, BF
-            Line (14, 11)-(16, 12), 3, BF
-            Line (13, 19)-(17, 19), 3
-            PSet (13, 14), 3
-        Case "comp"
-            Line (10, 3)-(25, 4), 8, BF
-            Line -(26, 16), 8, BF
-            Line (8, 5)-(24, 17), 7, BF
-            Line (8, 5)-(9, 4), 8
-            PSet (24, 5), 8
-            Line (9, 18)-(23, 18), 7
-            Line (24, 18)-(25, 17), 8
-            Line (7, 20)-(25, 24), 7, BF
-            PSet (8, 22), 2: PSet (10, 22), 6
-            Line (19, 22)-(24, 22), 8
-            Line (8, 19)-(27, 19), 8: Line (24, 18)-(27, 18), 8
-            Line (7, 19)-(26, 19), 0, , &H5555: Line (24, 18)-(27, 18), 0, , &H5555
-            Line (26, 20)-(27, 22), 8, BF
-            PSet (26, 23), 8
-            For i = 0 To 3
-                Line (6 - i, 26 + i)-(24 - i, 26 + i), 7: PSet (25 - i, 26 + i), 8
-            Next i
-            Line (6, 27)-(21, 27), 8, , &H5555: Line (5, 28)-(21, 28), 8, , &H5555
-            Line (11, 7)-(21, 16), 0, BF: Line (10, 8)-(10, 15), 0: Line (22, 8)-(22, 15), 0
-            Line (11, 10)-(11, 9), 8: Line (12, 8)-(13, 8), 8: Line (20, 15)-(21, 14), 8
-            PSet (12, 9), 7
-    End Select
-    View (0, 0)-(639, 349)
-End Sub
+SUB DrawIcon (x%, y%, name$)
+    VIEW (x, y)-(x + 31, y + 31)
+    SELECT CASE name$
+        CASE "i"
+            CIRCLE (15, 15), 12, 0, , , .7
+            LINE (21, 23)-(26, 25), 0
+            LINE (25, 21)-(26, 25), 0
+            PAINT (16, 16), 15, 0: PAINT (24, 23), 15, 0
+            LINE (21, 22)-(24, 21), 7
+            LINE (10, 22)-(20, 22), 7
+            LINE (14, 14)-(16, 19), 3, BF
+            LINE (14, 11)-(16, 12), 3, BF
+            LINE (13, 19)-(17, 19), 3
+            PSET (13, 14), 3
+        CASE "comp"
+            LINE (10, 3)-(25, 4), 8, BF
+            LINE -(26, 16), 8, BF
+            LINE (8, 5)-(24, 17), 7, BF
+            LINE (8, 5)-(9, 4), 8
+            PSET (24, 5), 8
+            LINE (9, 18)-(23, 18), 7
+            LINE (24, 18)-(25, 17), 8
+            LINE (7, 20)-(25, 24), 7, BF
+            PSET (8, 22), 2: PSET (10, 22), 6
+            LINE (19, 22)-(24, 22), 8
+            LINE (8, 19)-(27, 19), 8: LINE (24, 18)-(27, 18), 8
+            LINE (7, 19)-(26, 19), 0, , &H5555: LINE (24, 18)-(27, 18), 0, , &H5555
+            LINE (26, 20)-(27, 22), 8, BF
+            PSET (26, 23), 8
+            FOR i = 0 TO 3
+                LINE (6 - i, 26 + i)-(24 - i, 26 + i), 7: PSET (25 - i, 26 + i), 8
+            NEXT i
+            LINE (6, 27)-(21, 27), 8, , &H5555: LINE (5, 28)-(21, 28), 8, , &H5555
+            LINE (11, 7)-(21, 16), 0, BF: LINE (10, 8)-(10, 15), 0: LINE (22, 8)-(22, 15), 0
+            LINE (11, 10)-(11, 9), 8: LINE (12, 8)-(13, 8), 8: LINE (20, 15)-(21, 14), 8
+            PSET (12, 9), 7
+    END SELECT
+    VIEW (0, 0)-(639, 349)
+END SUB
 
-Sub Form (wx, wy, wwidth, wheight)
-    Line (wx, wy)-(wx + wwidth, wy + wheight), 15, BF
-    Line (wx, wy)-(wx + wwidth, wy + wheight), 8, B
-    Line (wx + 1, wy + 1)-(wx + wwidth - 1, wy + wheight - 1), 7, B
-End Sub
+SUB Form (wx, wy, wwidth, wheight)
+    LINE (wx, wy)-(wx + wwidth, wy + wheight), 15, BF
+    LINE (wx, wy)-(wx + wwidth, wy + wheight), 8, B
+    LINE (wx + 1, wy + 1)-(wx + wwidth - 1, wy + wheight - 1), 7, B
+END SUB
 
-Sub mouse (Funk) Static
-    Static Crsr
-    If Funk = 1 Then Crsr = 1
-    If Funk = 2 And Crsr = 0 Then Exit Sub
-    If Funk = 2 And Crsr = 1 Then: Crsr = 0
-    Poke 100, 184: Poke 101, Funk: Poke 102, 0
-    Poke 103, 205: Poke 104, 51: Poke 105, 137
-    Poke 106, 30: Poke 107, 170: Poke 108, 10
-    Poke 109, 137: Poke 110, 14: Poke 111, 187
-    Poke 112, 11: Poke 113, 137: Poke 114, 22
-    Poke 115, 204: Poke 116, 12: Poke 117, 203
-    Call Absolute(100)
-    B = Peek(&HAAA)
-    H = (Peek(&HBBB) + Peek(&HBBC) * 256)
-    V = (Peek(&HCCC) + Peek(&HCCD) * 256)
-End Sub
+SUB mouse (Funk) STATIC
+    STATIC Crsr
+    IF Funk = 1 THEN Crsr = 1
+    IF Funk = 2 AND Crsr = 0 THEN EXIT SUB
+    IF Funk = 2 AND Crsr = 1 THEN : Crsr = 0
+    POKE 100, 184: POKE 101, Funk: POKE 102, 0
+    POKE 103, 205: POKE 104, 51: POKE 105, 137
+    POKE 106, 30: POKE 107, 170: POKE 108, 10
+    POKE 109, 137: POKE 110, 14: POKE 111, 187
+    POKE 112, 11: POKE 113, 137: POKE 114, 22
+    POKE 115, 204: POKE 116, 12: POKE 117, 203
+    CALL Absolute(100)
+    B = PEEK(&HAAA)
+    H = (PEEK(&HBBB) + PEEK(&HBBC) * 256)
+    V = (PEEK(&HCCC) + PEEK(&HCCD) * 256)
+END SUB
 
-Sub MsgBox (prompt$, x, y, buttontext$, PID)
-    If Drawn(PID) = 0 Then
-        windowlength = (Len(prompt$) * 5.58) + 60
-        buttonlength = Len(buttontext$) * 5.58 + 32
+SUB MsgBox (prompt$, x, y, buttontext$, PID)
+    IF Drawn(PID) = 0 THEN
+        windowlength = (LEN(prompt$) * 5.58) + 60
+        buttonlength = LEN(buttontext$) * 5.58 + 32
         Form x, y, windowlength, 65
         DrawIcon x + 10, y + 5, "i"
         wrint prompt$, x + 46, y + 13, 0, "arial", 0
         Button ((x + windowlength / 2) - buttonlength / 2), y + 40, buttonlength, 16, buttontext$, 7
         Drawn(PID) = 1
-    Else
+    ELSE
         'Task manager part
-        If GiveControl = PID Then
-            If B = 1 Then
-                Refresh 0, 0, 639, 349, 3
-            End If
-        End If
-    End If
-End Sub
+        IF GiveControl = PID THEN
+            IF B = 1 THEN
+                Refresh 3
+            END IF
+        END IF
+    END IF
+END SUB
 
-Sub Refresh (x, y, z, w, col)
+SUB Refresh (col%)
     'Any code that draws the desktop shall be put here
-    View (x, y)-(z, w)
-    Cls: Paint (1, 1), col
+    mouse 2
+    CLS : PAINT (1, 1), col
     Desktop
-    PCopy 1, 0
-    View (0, 0)-(639, 349)
-End Sub
+    PCOPY 1, 0
+    mouse 1
+END SUB
 
-Sub Taskmgr
-    If ProcNum < 10 Then
+SUB Taskmgr
+    IF ProcNum < 10 THEN
         GiveControl = ProcNum
         ProcNum = ProcNum + 1
-    Else
+    ELSE
         ProcNum = 0
-    End If
-    PCopy 1, 0
-End Sub
+    END IF
+    PCOPY 1, 0
+END SUB
 
-Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
+SUB wrint (txt$, x, y, c, FontFile$, Attribs%)
     'WinFontsQB by Josh Heaton
     'font: displays a string of text.
 
@@ -179,201 +178,201 @@ Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
     ' $$ prints 1 $
     ' $c changes text color at draw-time
 
-    Dim Char As FontCharInfo
+    DIM Char AS FontCharInfo
     OrgAttribs% = Attribs%
 
-    a% = InStr(FontFile$, ".")
-    If a% = 0 Then FontFile$ = FontFile$ + ".fnt"
+    a% = INSTR(FontFile$, ".")
+    IF a% = 0 THEN FontFile$ = FontFile$ + ".fnt"
 
-    Handle = FreeFile
-    Open FontFile$ For Binary As #Handle
-    If LOF(Handle) = 0 Then
-        Close #Handle
-        Kill FontFile$
-        Exit Sub
-    End If
+    Handle = FREEFILE
+    OPEN FontFile$ FOR BINARY AS #Handle
+    IF LOF(Handle) = 0 THEN
+        CLOSE #Handle
+        KILL FontFile$
+        EXIT SUB
+    END IF
 
     Version% = 0
-    Get #Handle, , Version%
-    If (Version% Mod 256 <> 0) Or (Version% \ 256 <> 1) Then
+    GET #Handle, , Version%
+    IF (Version% MOD 256 <> 0) OR (Version% \ 256 <> 1) THEN
         'Incorrect version
-        Close #Handle
-        Exit Sub
-    End If
+        CLOSE #Handle
+        EXIT SUB
+    END IF
 
     ty& = y%
      
-    If x% = ALIGN.CENTER Then
+    IF x% = ALIGN.CENTER THEN
         tx& = 0
         Widest& = 0
         FixLR% = 0
-        For i% = 1 To Len(txt$)
-            CharCnt% = Asc(Mid$(txt$, i%, 1)) - 32
-            If CharCnt% = -19 Then
-                If tx& > Widest& Then Widest& = tx&: tx& = 0
+        FOR i% = 1 TO LEN(txt$)
+            CharCnt% = ASC(MID$(txt$, i%, 1)) - 32
+            IF CharCnt% = -19 THEN
+                IF tx& > Widest& THEN Widest& = tx&: tx& = 0
                 FixLR% = 1
-            ElseIf CharCnt% = Asc("$") - 32 Then
+            ELSEIF CharCnt% = ASC("$") - 32 THEN
                 'Special formatting code
                 i% = i% + 1
-                Code$ = LCase$(Mid$(txt$, i%, 1))
+                Code$ = LCASE$(MID$(txt$, i%, 1))
                 'IF code$ = "b" THEN GOSUB ToggleBold       ' Don't run these
                 'IF code$ = "u" THEN GOSUB ToggleUnderline  ' on centering
                 'IF code$ = "i" THEN GOSUB ToggleItalics    ' just yet...
-                If Code$ = "$" Then
+                IF Code$ = "$" THEN
                     'Crank out a dollar sign on the screen
-                    CharCnt% = Asc("$") - 32
-                    GoTo CountCharWidthForCentering:
+                    CharCnt% = ASC("$") - 32
+                    GOTO CountCharWidthForCentering:
                           
-                End If
-            Else
-                CountCharWidthForCentering:
-                Seek #Handle, (2 + 2 + 4) * CharCnt% + 1 + 2
-                Get #Handle, , Char
+                END IF
+            ELSE
+CountCharWidthForCentering:
+                SEEK #Handle, (2 + 2 + 4) * CharCnt% + 1 + 2
+                GET #Handle, , Char
                 tx& = tx& + Char.CharWidth
-            End If
-        Next
-        If tx& > Widest& Then Widest& = tx&
+            END IF
+        NEXT
+        IF tx& > Widest& THEN Widest& = tx&
         tx& = (screenresx \ 2) - (tx& \ 2)
-    ElseIf x% = ALIGN.RIGHT Then
+    ELSEIF x% = ALIGN.RIGHT THEN
         tx& = 0
         Widest& = 0
         FixLR% = 0
-        For i% = 1 To Len(txt$)
-            CharCnt% = Asc(Mid$(txt$, i%, 1)) - 32
-            If CharCnt% = -19 Then
-                If tx& > Widest& Then Widest& = tx&: tx& = 0
+        FOR i% = 1 TO LEN(txt$)
+            CharCnt% = ASC(MID$(txt$, i%, 1)) - 32
+            IF CharCnt% = -19 THEN
+                IF tx& > Widest& THEN Widest& = tx&: tx& = 0
                 FixLR% = 1
-            ElseIf CharCnt% = Asc("$") - 32 Then
+            ELSEIF CharCnt% = ASC("$") - 32 THEN
                 'Special formatting code
                 i% = i% + 1
-                Code$ = LCase$(Mid$(txt$, i%, 1))
-                If Code$ = "$" Then
+                Code$ = LCASE$(MID$(txt$, i%, 1))
+                IF Code$ = "$" THEN
                     'Crank out a dollar sign on the screen
-                    CharCnt% = Asc("$") - 32
-                    GoTo CountCharWidthForRight:
-                End If
-            Else
-                CountCharWidthForRight:
-                Seek #Handle, (2 + 2 + 4) * CharCnt% + 1 + 2
-                Get #Handle, , Char
+                    CharCnt% = ASC("$") - 32
+                    GOTO CountCharWidthForRight:
+                END IF
+            ELSE
+CountCharWidthForRight:
+                SEEK #Handle, (2 + 2 + 4) * CharCnt% + 1 + 2
+                GET #Handle, , Char
                 tx& = tx& + Char.CharWidth
-            End If
-        Next
-        If tx& > Widest& Then Widest& = tx&
+            END IF
+        NEXT
+        IF tx& > Widest& THEN Widest& = tx&
         tx& = screenresx - tx&
-    Else
+    ELSE
         tx& = x%
-    End If
+    END IF
     ttx& = tx&
-    For i% = 1 To Len(txt$)
-        CharCnt% = Asc(Mid$(txt$, i%, 1))
+    FOR i% = 1 TO LEN(txt$)
+        CharCnt% = ASC(MID$(txt$, i%, 1))
         FixLR% = 0
-        If CharCnt% = 13 Then
+        IF CharCnt% = 13 THEN
             'Line return, fix it
             FixLR% = 1
-            CharCnt% = Asc("A") - 32
-        ElseIf CharCnt% = Asc("$") Then
+            CharCnt% = ASC("A") - 32
+        ELSEIF CharCnt% = ASC("$") THEN
             'Special formatting code
             i% = i% + 1
-            Code$ = LCase$(Mid$(txt$, i%, 1))
-            If Code$ = "b" Then GoSub ToggleBold: CharCnt% = -1
-            If Code$ = "u" Then GoSub ToggleUnderline: CharCnt% = -1
-            If Code$ = "i" Then GoSub ToggleItalics: CharCnt% = -1
-            If Code$ = "c" Then GoSub SetTempColor: CharCnt% = -1
+            Code$ = LCASE$(MID$(txt$, i%, 1))
+            IF Code$ = "b" THEN GOSUB ToggleBold: CharCnt% = -1
+            IF Code$ = "u" THEN GOSUB ToggleUnderline: CharCnt% = -1
+            IF Code$ = "i" THEN GOSUB ToggleItalics: CharCnt% = -1
+            IF Code$ = "c" THEN GOSUB SetTempColor: CharCnt% = -1
        
-            If Code$ = "$" Then
+            IF Code$ = "$" THEN
                 'Crank out a dollar sign on the screen
-                CharCnt% = Asc("$") - 32
-            End If
-        ElseIf CharCnt% < 32 Or CharCnt% > 126 Then
+                CharCnt% = ASC("$") - 32
+            END IF
+        ELSEIF CharCnt% < 32 OR CharCnt% > 126 THEN
             CharCnt% = 127
-        Else
+        ELSE
             CharCnt% = CharCnt% - 32
-        End If
-        If CharCnt% > -1 Then
-            Seek #Handle, (2 + 2 + 4) * CharCnt% + 1 + 2
-            Get #Handle, , Char
-            Seek #Handle, Char.FileOffset
-            ReDim CharDat&(Char.CharHeight)
-            If FixLR% <> 0 Then
+        END IF
+        IF CharCnt% > -1 THEN
+            SEEK #Handle, (2 + 2 + 4) * CharCnt% + 1 + 2
+            GET #Handle, , Char
+            SEEK #Handle, Char.FileOffset
+            REDIM CharDat&(Char.CharHeight)
+            IF FixLR% <> 0 THEN
                 'Do a line return
                 ttx& = tx&
                 ty& = ty& + Char.CharHeight
                 FixLR% = 0
-            Else
+            ELSE
                 'Draw char on screen
-                If CharCnt% <> 0 Then
+                IF CharCnt% <> 0 THEN
                     'Don't draw a space because there is a bug for some reason.
-                    For cty% = 0 To Char.CharHeight - 1
+                    FOR cty% = 0 TO Char.CharHeight - 1
                         t% = 0
-                        Get #Handle, , t%
+                        GET #Handle, , t%
                         CharDat&(cty%) = t%
                         offset% = 0
-                        If (Attribs% And ATTRIB.ITALICS) <> 0 Then offset% = -cty% / 3
-                        Line (ttx& + offset%, ty& + cty%)-(ttx& + 16 + offset%, ty& + cty%), c%, , CharDat&(cty%) ' MOD 32767
-                        If (Attribs% And ATTRIB.BOLD) <> 0 Then
-                            Line (ttx& + offset% + 1, ty& + cty%)-(ttx& + 17 + offset%, ty& + cty%), c%, , CharDat&(cty%) ' MOD 32767
-                        End If
-                    Next
-                End If
-                If (Attribs% And ATTRIB.UNDERLINE) <> 0 Then Line (ttx&, Char.CharHeight - 2 + ty&)-(ttx& + Char.CharWidth, Char.CharHeight - 2 + ty&), c%
+                        IF (Attribs% AND ATTRIB.ITALICS) <> 0 THEN offset% = -cty% / 3
+                        LINE (ttx& + offset%, ty& + cty%)-(ttx& + 16 + offset%, ty& + cty%), c%, , CharDat&(cty%) ' MOD 32767
+                        IF (Attribs% AND ATTRIB.BOLD) <> 0 THEN
+                            LINE (ttx& + offset% + 1, ty& + cty%)-(ttx& + 17 + offset%, ty& + cty%), c%, , CharDat&(cty%) ' MOD 32767
+                        END IF
+                    NEXT
+                END IF
+                IF (Attribs% AND ATTRIB.UNDERLINE) <> 0 THEN LINE (ttx&, Char.CharHeight - 2 + ty&)-(ttx& + Char.CharWidth, Char.CharHeight - 2 + ty&), c%
                 ttx& = ttx& + Char.CharWidth
-            End If
-        End If
-    Next
+            END IF
+        END IF
+    NEXT
 
-    Close #Handle
+    CLOSE #Handle
 
     Attribs% = OrgAttribs%
 
-    Exit Sub
+    EXIT SUB
 
-    ToggleBold:
+ToggleBold:
 
-    If (Attribs% And ATTRIB.BOLD) <> 0 Then
+    IF (Attribs% AND ATTRIB.BOLD) <> 0 THEN
         Attribs% = Attribs% - ATTRIB.BOLD
-    Else
+    ELSE
         Attribs% = Attribs% + ATTRIB.BOLD
-    End If
+    END IF
 
-    Return
+    RETURN
 
-    ToggleUnderline:
+ToggleUnderline:
 
-    If (Attribs% And ATTRIB.UNDERLINE) <> 0 Then
+    IF (Attribs% AND ATTRIB.UNDERLINE) <> 0 THEN
         Attribs% = Attribs% - ATTRIB.UNDERLINE
-    Else
+    ELSE
         Attribs% = Attribs% + ATTRIB.UNDERLINE
-    End If
+    END IF
 
-    Return
+    RETURN
 
-    ToggleItalics:
+ToggleItalics:
 
-    If (Attribs% And ATTRIB.ITALICS) <> 0 Then
+    IF (Attribs% AND ATTRIB.ITALICS) <> 0 THEN
         Attribs% = Attribs% - ATTRIB.ITALICS
-    Else
+    ELSE
         Attribs% = Attribs% + ATTRIB.ITALICS
-    End If
+    END IF
 
-    Return
+    RETURN
 
-    SetTempColor:
+SetTempColor:
 
     clr$ = ""
 
     i% = i% + 1 'Get past the "c"
 
-    While InStr("0123456789", Mid$(txt$, i%, 1))
-        clr$ = clr$ + Mid$(txt$, i%, 1)
+    WHILE INSTR("0123456789", MID$(txt$, i%, 1))
+        clr$ = clr$ + MID$(txt$, i%, 1)
         i% = i% + 1
-    Wend
+    WEND
 
     i% = i% - 1 'Back up one char
 
-    c% = Val(clr$)
+    c% = VAL(clr$)
 
-    Return
+    RETURN
 
-End Sub
+END SUB
 
