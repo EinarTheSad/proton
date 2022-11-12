@@ -6,15 +6,15 @@ DECLARE SUB Refresh (col%)
 DECLARE SUB Desktop ()
 DECLARE SUB Button (bx, by, bwidth, bheight, btext$, bcolor)
 DECLARE SUB Form (wx, wy, wwidth, wheight)
-DECLARE SUB MsgBox (prompt$, x, y, buttontext$, PID)
+DECLARE SUB MsgBox (prompt$, x, y, addwidth, buttontext$, PID)
 DECLARE SUB DrawIcon (x%, y%, name$)
 DECLARE SUB wrint (txt$, x, y, c, FontFile$, Attribs%)
-DECLARE SUB BMLoad (bitmap$, x, y, z, w)
+DECLARE SUB BMPLoad (bitmap$, x, y)
 
 '--- CONSTANTS ---
 Const ATTRIB.BOLD = 1, ATTRIB.UNDERLINE = 2, ATTRIB.ITALICS = 4
 Const ALIGN.CENTER = -1, ALIGN.RIGHT = -2
-Const SCREENX = 640, SCREENY = 350
+Const SCREENX = 640, SCREENY = 480
 
 '--- COMMON VARS ---
 Common Shared B, H, V
@@ -22,16 +22,15 @@ Common Shared GiveControl%, ProcNum%
 Dim Shared Drawn(10) As Integer
 Common Shared dcolor As Integer: dcolor = 3
 
-Screen 9, , 1, 0
+Screen 12
 
 Refresh dcolor
 mouse 1 'Show cursor
-MsgBox "$bProton 0.23$b reporting on duty.", 120, 100, "Acknowledged", 1
+MsgBox "$bProton 0.23$b has booted. Welcome to system.", 150, 220, 30, "Close", 1
 
 '--- MAIN LOOP ---
 Do
     Taskmgr 'Run the task manager
-    MsgBox "", 0, 0, "", 1 'Handle the button click, temporarily
 Loop Until InKey$ = "q" ' Temporary escape
 
 '--- MAIN CODE ENDS HERE ---
@@ -44,14 +43,40 @@ Type FontCharInfo
     FileOffset As Long
 End Type
 
-Sub BMLoad (bitmap$, x, y, z, w)
-    bsaveSize = z * w / 2
-    Dim load(bsaveSize) As Integer
-    Def Seg = VarSeg(load(0))
-    BLoad ".\" + bitmap$ + ".put", VarPtr(load(0))
-    Put (x, y), load(), PSet
-    Def Seg
-    PCopy 1, 0
+Sub BMPLoad (bitmap$, x, y)
+    Type BMPHeaderType
+        id As String * 2 'Should be "BM"
+        size As Long 'Size of the data
+        rr1 As Integer '
+        rr2 As Integer '
+        offset As Long 'Position of start of pixel data
+        horz As Long '
+        wid As Long 'Image width
+        hei As Long 'Image height
+        planes As Integer '
+        bpp As Integer 'Should read 8 for a 256 colour image
+        pakbyte As Long '
+        imagebytes As Long 'Width*Height
+        xres As Long '
+        yres As Long '
+        colch As Long '
+        ic As Long '
+        pal As String * 1024
+    End Type
+    Dim BmpHeader As BMPHeaderType: hdl& = FreeFile
+    Open bitmap$ For Binary As hdl&
+    Get #1, , BmpHeader
+    Pixel$ = Space$(BmpHeader.wid)
+    iHeight% = BmpHeader.hei - 1
+    iWidth% = BmpHeader.wid - 1
+    View (x, y)-(x + iWidth%, y + iHeight%)
+    For y% = iHeight% To 0 Step -1
+        Get #1, , Pixel$
+        For x% = 0 To iWidth%
+            PSet (x%, y%), Asc(Mid$(Pixel$, x% + 1, 1))
+    Next x%, y%: Close hdl&
+
+    View (0, 0)-(SCREENX - 1, SCREENY - 1)
 End Sub
 
 Sub Button (bx, by, bwidth, bheight, btext$, bcolor)
@@ -59,17 +84,17 @@ Sub Button (bx, by, bwidth, bheight, btext$, bcolor)
     Line (bx, by)-(bx + bwidth, by + bheight), 0, B
     Line (bx + 1, by)-(bx + bwidth - 1, by + bheight - 1), 8, B
     If btext$ <> "" Then
-        wrint btext$, bx + 8, by, 0, "arial", 0
+        wrint btext$, bx + 8, by, 0, "arial", 1
     End If
 End Sub
 
 Sub Desktop
-    'Bitmap for testing purposes
-    BMLoad "logo", 272, 72, 88, 206
+    'Bitmaps for testing purposes
+    BMPLoad ".\logo.bmp", 272, 137
     'Icons
-    DrawIcon 8, 308, "comp"
-    DrawIcon 48, 308, "i"
-    PCopy 1, 0
+    ipos% = SCREENY - 32 - 10
+    DrawIcon 8, ipos, "comp": DrawIcon 48, ipos, "i"
+
 End Sub
 
 Sub DrawIcon (x%, y%, name$)
@@ -110,7 +135,7 @@ Sub DrawIcon (x%, y%, name$)
             PSet (12, 9), 7
     End Select
     View (0, 0)-(SCREENX - 1, SCREENY - 1)
-    PCopy 1, 0
+    
 End Sub
 
 Sub Form (wx, wy, wwidth, wheight)
@@ -136,16 +161,16 @@ Sub mouse (Funk) Static
     V = (Peek(&HCCC) + Peek(&HCCD) * 256)
 End Sub
 
-Sub MsgBox (prompt$, x, y, buttontext$, PID)
+Sub MsgBox (prompt$, x, y, addwidth, buttontext$, PID)
     If Drawn(PID) = 0 Then
-        windowlength = (Len(prompt$) * 5.58) + 60
-        buttonlength = Len(buttontext$) * 5.58 + 32
+        windowlength = (Len(prompt$) * 5) + 60 + addwidth
+        buttonlength = Len(buttontext$) * 5 + 32
         Form x, y, windowlength, 65
         DrawIcon x + 10, y + 5, "i"
         wrint prompt$, x + 46, y + 13, 0, "arial", 0
         Button ((x + windowlength / 2) - buttonlength / 2), y + 40, buttonlength, 16, buttontext$, 7
         Drawn(PID) = 1
-        PCopy 1, 0
+        
     Else
         'Task manager part
         If GiveControl = PID Then
@@ -160,7 +185,7 @@ Sub Refresh (col%)
     'Any code that draws the desktop shall be put here
     Cls: Paint (1, 1), col
     Desktop
-    PCopy 1, 0
+    
 End Sub
 
 Sub Taskmgr
