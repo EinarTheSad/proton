@@ -9,7 +9,7 @@ DECLARE SUB Form (wx, wy, wwidth, wheight)
 DECLARE SUB MsgBox (prompt$, x, y, addwidth, buttontext$, PID)
 DECLARE SUB DrawIcon (x%, y%, name$)
 DECLARE SUB wrint (txt$, x, y, c, FontFile$, Attribs%)
-DECLARE SUB BMPLoad (bitmap$, x, y)
+DECLARE SUB BMPLoad (bitmap$, x, y, transparency%)
 
 '--- CONSTANTS ---
 Const ATTRIB.BOLD = 1, ATTRIB.UNDERLINE = 2, ATTRIB.ITALICS = 4
@@ -26,7 +26,7 @@ Screen 12
 
 Refresh dcolor
 mouse 1 'Show cursor
-MsgBox "$bProton 0.23$b has booted. Welcome to system.", 150, 220, 30, "Close", 1
+MsgBox "$bProton 0.23$b has booted. Welcome to the system!", 145, 208, 32, "Close", 1
 
 '--- MAIN LOOP ---
 Do
@@ -43,26 +43,27 @@ Type FontCharInfo
     FileOffset As Long
 End Type
 
-Sub BMPLoad (bitmap$, x, y)
-    Type BMPHeaderType
-        id As String * 2 'Should be "BM"
-        size As Long 'Size of the data
-        rr1 As Integer '
-        rr2 As Integer '
-        offset As Long 'Position of start of pixel data
-        horz As Long '
-        wid As Long 'Image width
-        hei As Long 'Image height
-        planes As Integer '
-        bpp As Integer 'Should read 8 for a 256 colour image
-        pakbyte As Long '
-        imagebytes As Long 'Width*Height
-        xres As Long '
-        yres As Long '
-        colch As Long '
-        ic As Long '
-        pal As String * 1024
-    End Type
+Type BMPHeaderType
+    id As String * 2 'Should be "BM"
+    size As Long 'Size of the data
+    rr1 As Integer '
+    rr2 As Integer '
+    offset As Long 'Position of start of pixel data
+    horz As Long '
+    wid As Long 'Image width
+    hei As Long 'Image height
+    planes As Integer '
+    bpp As Integer 'Should read 8 for a 256 colour image
+    pakbyte As Long '
+    imagebytes As Long 'Width*Height
+    xres As Long '
+    yres As Long '
+    colch As Long '
+    ic As Long '
+    pal As String * 1024
+End Type
+
+Sub BMPLoad (bitmap$, x, y, transparency%)
     Dim BmpHeader As BMPHeaderType: hdl& = FreeFile
     Open bitmap$ For Binary As hdl&
     Get #1, , BmpHeader
@@ -73,9 +74,13 @@ Sub BMPLoad (bitmap$, x, y)
     For y% = iHeight% To 0 Step -1
         Get #1, , Pixel$
         For x% = 0 To iWidth%
-            PSet (x%, y%), Asc(Mid$(Pixel$, x% + 1, 1))
+            c% = Asc(Mid$(Pixel$, x% + 1, 1))
+            If c% <> transparency% Then
+                PSet (x%, y%), c%
+            Else
+                'just do nothing
+            End If
     Next x%, y%: Close hdl&
-
     View (0, 0)-(SCREENX - 1, SCREENY - 1)
 End Sub
 
@@ -90,52 +95,10 @@ End Sub
 
 Sub Desktop
     'Bitmaps for testing purposes
-    BMPLoad ".\logo.bmp", 272, 137
+    BMPLoad ".\logo.bmp", 272, 137, 63
     'Icons
-    ipos% = SCREENY - 32 - 10
-    DrawIcon 8, ipos, "comp": DrawIcon 48, ipos, "i"
-
-End Sub
-
-Sub DrawIcon (x%, y%, name$)
-    View (x, y)-(x + 31, y + 31)
-    Select Case name$
-        Case "i"
-            Circle (15, 15), 12, 0, , , .7
-            Line (21, 23)-(26, 25), 0
-            Line (25, 21)-(26, 25), 0
-            Paint (16, 16), 15, 0: Paint (24, 23), 15, 0
-            Line (21, 22)-(24, 21), 7
-            Line (10, 22)-(20, 22), 7
-            Line (14, 14)-(16, 19), 3, BF
-            Line (14, 11)-(16, 12), 3, BF
-            Line (13, 19)-(17, 19), 3
-            PSet (13, 14), 3
-        Case "comp"
-            Line (10, 3)-(25, 4), 8, BF
-            Line -(26, 16), 8, BF
-            Line (8, 5)-(24, 17), 7, BF
-            Line (8, 5)-(9, 4), 8
-            PSet (24, 5), 8
-            Line (9, 18)-(23, 18), 7
-            Line (24, 18)-(25, 17), 8
-            Line (7, 20)-(25, 24), 7, BF
-            PSet (8, 22), 2: PSet (10, 22), 6
-            Line (19, 22)-(24, 22), 8
-            Line (8, 19)-(27, 19), 8: Line (24, 18)-(27, 18), 8
-            Line (7, 19)-(26, 19), 0, , &H5555: Line (24, 18)-(27, 18), 0, , &H5555
-            Line (26, 20)-(27, 22), 8, BF
-            PSet (26, 23), 8
-            For i = 0 To 3
-                Line (6 - i, 26 + i)-(24 - i, 26 + i), 7: PSet (25 - i, 26 + i), 8
-            Next i
-            Line (6, 27)-(21, 27), 8, , &H5555: Line (5, 28)-(21, 28), 8, , &H5555
-            Line (11, 7)-(21, 16), 0, BF: Line (10, 8)-(10, 15), 0: Line (22, 8)-(22, 15), 0
-            Line (11, 10)-(11, 9), 8: Line (12, 8)-(13, 8), 8: Line (20, 15)-(21, 14), 8
-            PSet (12, 9), 7
-    End Select
-    View (0, 0)-(SCREENX - 1, SCREENY - 1)
-    
+    BMPLoad ".\comp.bmp", 12, SCREENY - 48, 13
+    BMPLoad ".\dos.bmp", 12 + 32 + 16, SCREENY - 48, 13
 End Sub
 
 Sub Form (wx, wy, wwidth, wheight)
@@ -166,11 +129,10 @@ Sub MsgBox (prompt$, x, y, addwidth, buttontext$, PID)
         windowlength = (Len(prompt$) * 5) + 60 + addwidth
         buttonlength = Len(buttontext$) * 5 + 32
         Form x, y, windowlength, 65
-        DrawIcon x + 10, y + 5, "i"
+        BMPLoad ".\info.bmp", x + 10, y + 5, 13
         wrint prompt$, x + 46, y + 13, 0, "arial", 0
         Button ((x + windowlength / 2) - buttonlength / 2), y + 40, buttonlength, 16, buttontext$, 7
         Drawn(PID) = 1
-        
     Else
         'Task manager part
         If GiveControl = PID Then
