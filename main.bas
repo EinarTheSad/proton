@@ -1,13 +1,14 @@
 DefInt A-Z
+'$INCLUDE: '.\types.bi'
+
 '--- DECLARE ---
 DECLARE SUB mouse (Funk)
 DECLARE SUB Taskmgr ()
-DECLARE SUB Refresh (col%)
+DECLARE SUB Refresh (col%, curshow%)
 DECLARE SUB Desktop ()
-DECLARE SUB Button (bx, by, bwidth, bheight, btext$, bcolor)
-DECLARE SUB Form (wx, wy, wwidth, wheight)
-DECLARE SUB MsgBox (prompt$, x, y, addwidth, buttontext$, PID)
-DECLARE SUB DrawIcon (x%, y%, name$)
+DECLARE SUB Button (bx, by, bwidth%, bheight%, btext$, bcolor%)
+DECLARE SUB DrawForm (this AS Form)
+DECLARE SUB MsgBox (prompt$, addwidth%, buttontext$, title$)
 DECLARE SUB wrint (txt$, x, y, c, FontFile$, Attribs%)
 DECLARE SUB BMPLoad (bitmap$, x, y, transparency%)
 
@@ -18,59 +19,35 @@ Const SCREENX = 640, SCREENY = 480
 
 '--- COMMON VARS ---
 Common Shared B, H, V
-Common Shared GiveControl%, ProcNum%
 Dim Shared Drawn(10) As Integer
-Common Shared dcolor As Integer: dcolor = 3
+Common Shared dcolor As Integer
+Common Shared tbcolor As Integer
+tbcolor = 1: dcolor = 3 ' Titlebar and desktop colors
 
 Screen 12
 
-Refresh dcolor
-mouse 1 'Show cursor
-MsgBox "$bProton 0.23$b has booted. Welcome to the system!", 145, 208, 32, "Close", 1
+Refresh dcolor, 0
+'Testing window management
+Dim test As Form
+test.x = 100: test.y = 50: test.w = 400: test.h = 300: test.title = "Test window"
+DrawForm test
+BMPLoad ".\logo.bmp", test.x + 2, test.y + 21, 63
+mouse 1 'Show cursor - after everything else is drawn
 
-'--- MAIN LOOP ---
-Do
-    Taskmgr 'Run the task manager
-Loop Until InKey$ = "q" ' Temporary escape
+Taskmgr 'Contains the main loop
 
 '--- MAIN CODE ENDS HERE ---
 
 '--- SUBS ---
 
-Type FontCharInfo
-    CharWidth As Integer
-    CharHeight As Integer
-    FileOffset As Long
-End Type
-
-Type BMPHeaderType
-    id As String * 2 'Should be "BM"
-    size As Long 'Size of the data
-    rr1 As Integer '
-    rr2 As Integer '
-    offset As Long 'Position of start of pixel data
-    horz As Long '
-    wid As Long 'Image width
-    hei As Long 'Image height
-    planes As Integer '
-    bpp As Integer 'Should read 8 for a 256 colour image
-    pakbyte As Long '
-    imagebytes As Long 'Width*Height
-    xres As Long '
-    yres As Long '
-    colch As Long '
-    ic As Long '
-    pal As String * 1024
-End Type
-
 Sub BMPLoad (bitmap$, x, y, transparency%)
     Dim BmpHeader As BMPHeaderType: hdl& = FreeFile
     Open bitmap$ For Binary As hdl&
     Get #1, , BmpHeader
-    Pixel$ = Space$(BmpHeader.wid)
+    Pixel$ = Space$(BmpHeader.wid) 'Loading a whole line at once
     iHeight% = BmpHeader.hei - 1
     iWidth% = BmpHeader.wid - 1
-    View (x, y)-(x + iWidth%, y + iHeight%)
+    View (x, y)-(x + iWidth%, y + iHeight%) 'Coordinates for the specific icon area
     For y% = iHeight% To 0 Step -1
         Get #1, , Pixel$
         For x% = 0 To iWidth%
@@ -78,36 +55,46 @@ Sub BMPLoad (bitmap$, x, y, transparency%)
             If c% <> transparency% Then
                 PSet (x%, y%), c%
             Else
-                'just do nothing
+                'just do nothing, because it's transparent
             End If
     Next x%, y%: Close hdl&
-    View (0, 0)-(SCREENX - 1, SCREENY - 1)
+    View (0, 0)-(SCREENX - 1, SCREENY - 1) 'Reset the coordinates
+    Exit Sub
 End Sub
 
-Sub Button (bx, by, bwidth, bheight, btext$, bcolor)
-    Line (bx, by)-(bx + bwidth, by + bheight), bcolor, BF
-    Line (bx, by)-(bx + bwidth, by + bheight), 0, B
-    Line (bx + 1, by)-(bx + bwidth - 1, by + bheight - 1), 8, B
-    If btext$ <> "" Then
-        wrint btext$, bx + 8, by, 0, "arial", 1
-    End If
+Sub Button (bx, by, bwidth%, bheight%, btext$, bcolor%)
+    Line (bx, by)-(bx + bwidth%, by + bheight%), bcolor%, BF
+    Line (bx, by)-(bx + bwidth%, by + bheight%), 0, B
+    Line (bx + 1, by)-(bx + bwidth% - 1, by + bheight% - 1), 8, B
+    wrint btext$, ((bx + bwidth% / 2) - (Len(btext$) * 7 / 2)), (by + bheight% / 2) - 8, 0, "arial", 1
+    Exit Sub
 End Sub
 
 Sub Desktop
     'Bitmaps for testing purposes
-    BMPLoad ".\logo.bmp", 272, 137, 63
+    'BMPLoad ".\berry.bmp", 0, 0, 63
     'Icons
     BMPLoad ".\comp.bmp", 12, SCREENY - 48, 13
     BMPLoad ".\dos.bmp", 12 + 32 + 16, SCREENY - 48, 13
+    Exit Sub
 End Sub
 
-Sub Form (wx, wy, wwidth, wheight)
-    Line (wx, wy)-(wx + wwidth, wy + wheight), 15, BF
-    Line (wx, wy)-(wx + wwidth, wy + wheight), 8, B
-    Line (wx + 1, wy + 1)-(wx + wwidth - 1, wy + wheight - 1), 7, B
+Sub DrawForm (this As Form)
+    Line (this.x, this.y)-(this.x + this.w, this.y + 20), tbcolor, BF 'titlebar
+    Line ((this.x + this.w - 18), this.y + 4)-((this.x + this.w - 4), this.y + 18), 7, BF 'x button
+    Line ((this.x + this.w - 19), this.y + 3)-((this.x + this.w - 3), this.y + 19), 8, B 'or rather 3.1 kind of thing
+    Line ((this.x + this.w - 14), this.y + 11)-((this.x + this.w - 6), this.y + 13), 8, B 'some shadow
+    Line ((this.x + this.w - 15), this.y + 10)-((this.x + this.w - 7), this.y + 12), 15, BF 'and the - sign
+    wrint this.title, this.x + 5, this.y + 3, 15, "arial", 1 'title, of course
+    Line (this.x, this.y + 21)-(this.x + this.w, this.y + this.h), 15, BF 'main area
+    Line (this.x, this.y)-(this.x + this.w, this.y + this.h), 8, B 'frame 1
+    Line (this.x + 1, this.y + 1)-(this.x + this.w - 1, this.y + this.h - 1), 7, B 'frame 2
+    Exit Sub
 End Sub
 
 Sub mouse (Funk) Static
+    'This is the standard routine for mouse access
+    'See QuickBasic help for the same example
     Static Crsr
     If Funk = 1 Then Crsr = 1
     If Funk = 2 And Crsr = 0 Then Exit Sub
@@ -124,40 +111,42 @@ Sub mouse (Funk) Static
     V = (Peek(&HCCC) + Peek(&HCCD) * 256)
 End Sub
 
-Sub MsgBox (prompt$, x, y, addwidth, buttontext$, PID)
-    If Drawn(PID) = 0 Then
-        windowlength = (Len(prompt$) * 5) + 60 + addwidth
-        buttonlength = Len(buttontext$) * 5 + 32
-        Form x, y, windowlength, 65
-        BMPLoad ".\info.bmp", x + 10, y + 5, 13
-        wrint prompt$, x + 46, y + 13, 0, "arial", 0
-        Button ((x + windowlength / 2) - buttonlength / 2), y + 40, buttonlength, 16, buttontext$, 7
-        Drawn(PID) = 1
-    Else
-        'Task manager part
-        If GiveControl = PID Then
-            If B = 1 Then
-                Refresh 3
-            End If
-        End If
-    End If
+Sub MsgBox (prompt$, addwidth%, buttontext$, title$)
+    'Okay, this is an absolute mess.
+    'All the math is here to center the layout
+    windowlength% = (Len(prompt$) * 6) + 60 + addwidth% '60 is an eyeballed value
+    buttonlength% = Len(buttontext$) * 8 + 15 'Why the varying character length? Eyeballed too!
+    Dim MsgBoxForm As Form
+    MsgBoxForm.x = SCREENX / 2 - windowlength% / 2
+    MsgBoxForm.y = SCREENY / 2 - 40
+    MsgBoxForm.w = windowlength
+    MsgBoxForm.h = 82 'arbitrary
+    MsgBoxForm.title = title$
+    DrawForm MsgBoxForm
+    BMPLoad ".\info.bmp", MsgBoxForm.x + 10, MsgBoxForm.y + 23, 13
+    wrint prompt$, ((MsgBoxForm.x + 47)), MsgBoxForm.y + 31, 0, "arial", 0
+    Button ((MsgBoxForm.x + windowlength% / 2) - buttonlength% / 2), MsgBoxForm.y + 57, buttonlength%, 16, buttontext$, 7
+    Exit Sub
+    'Forgive me, and if you know better - by all means, be my guest!
 End Sub
 
-Sub Refresh (col%)
-    'Any code that draws the desktop shall be put here
+Sub Refresh (col%, curshow%)
     Cls: Paint (1, 1), col
     Desktop
-    
+    If curshow% = 1 Then mouse 1
+    Exit Sub
 End Sub
 
 Sub Taskmgr
-    mouse 3 'Track mouse
-    If ProcNum < 10 Then
-        GiveControl = ProcNum
-        ProcNum = ProcNum + 1
-    Else
-        ProcNum = 0
-    End If
+    Do
+        mouse 3 'Track mouse
+        Select Case B
+            Case 1: Refresh dcolor, 1
+        End Select
+    Loop Until InKey$ = "q" ' Temporary escape
+    MsgBox "You can now turn the computer off", 0, "Thank you", "System termination"
+    Do: Loop Until InKey$ <> ""
+    End
 End Sub
 
 Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
@@ -174,8 +163,7 @@ Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
     Dim Char As FontCharInfo
     OrgAttribs% = Attribs%
 
-    a% = InStr(FontFile$, ".")
-    If a% = 0 Then FontFile$ = FontFile$ + ".fnt"
+    FontFile$ = ".\" + FontFile$ + ".fnt"
 
     Handle = FreeFile
     Open FontFile$ For Binary As #Handle
@@ -225,7 +213,7 @@ Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
             End If
         Next
         If tx& > Widest& Then Widest& = tx&
-        tx& = (screenresx \ 2) - (tx& \ 2)
+        tx& = (SCREENX \ 2) - (tx& \ 2)
     ElseIf x% = ALIGN.RIGHT Then
         tx& = 0
         Widest& = 0
@@ -252,7 +240,7 @@ Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
             End If
         Next
         If tx& > Widest& Then Widest& = tx&
-        tx& = screenresx - tx&
+        tx& = SCREENX - tx&
     Else
         tx& = x%
     End If
@@ -366,6 +354,6 @@ Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
     c% = Val(clr$)
 
     Return
-
+    Exit Sub
 End Sub
 
