@@ -19,7 +19,6 @@ Const SCREENX = 640, SCREENY = 480
 
 '--- COMMON VARS ---
 Common Shared B, H, V
-Dim Shared Drawn(10) As Integer
 Common Shared dcolor As Integer
 Common Shared tbcolor As Integer
 tbcolor = 1: dcolor = 3 ' Titlebar and desktop colors
@@ -35,6 +34,10 @@ BMPLoad ".\logo.bmp", test.x + 2, test.y + 21, 63
 mouse 1 'Show cursor - after everything else is drawn
 
 Taskmgr 'Contains the main loop
+
+MsgBox "You can now turn the computer off", 0, "Thank you", "System termination"
+Do: Loop Until InKey$ <> ""
+End
 
 '--- MAIN CODE ENDS HERE ---
 
@@ -71,8 +74,6 @@ Sub Button (bx, by, bwidth%, bheight%, btext$, bcolor%)
 End Sub
 
 Sub Desktop
-    'Bitmaps for testing purposes
-    'BMPLoad ".\berry.bmp", 0, 0, 63
     'Icons
     BMPLoad ".\comp.bmp", 12, SCREENY - 48, 13
     BMPLoad ".\dos.bmp", 12 + 32 + 16, SCREENY - 48, 13
@@ -131,7 +132,7 @@ Sub MsgBox (prompt$, addwidth%, buttontext$, title$)
 End Sub
 
 Sub Refresh (col%, curshow%)
-    Cls: Paint (1, 1), col
+    Line (0, 0)-(SCREENX, SCREENY), col%, BF
     Desktop
     If curshow% = 1 Then mouse 1
     Exit Sub
@@ -143,10 +144,8 @@ Sub Taskmgr
         Select Case B
             Case 1: Refresh dcolor, 1
         End Select
-    Loop Until InKey$ = "q" ' Temporary escape
-    MsgBox "You can now turn the computer off", 0, "Thank you", "System termination"
-    Do: Loop Until InKey$ <> ""
-    End
+    Loop Until InKey$ = "q"
+    Exit Sub
 End Sub
 
 Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
