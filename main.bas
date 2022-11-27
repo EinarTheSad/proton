@@ -1,4 +1,5 @@
 DefInt A-Z
+'$DYNAMIC
 '$INCLUDE: '.\types.bi'
 
 '--- DECLARE ---
@@ -18,12 +19,12 @@ Const ALIGN.CENTER = -1, ALIGN.RIGHT = -2
 Const SCREENX = 640, SCREENY = 480
 
 '--- COMMON VARS ---
-Common Shared B, H, V
+Common Shared B, h, V
 Common Shared dcolor As Integer
 Common Shared tbcolor As Integer
 tbcolor = 1: dcolor = 3 ' Titlebar and desktop colors
 
-Screen 12
+Screen 12: Color 15
 
 Refresh dcolor, 0
 'Testing window management
@@ -34,8 +35,9 @@ BMPLoad ".\logo.bmp", test.x + 2, test.y + 21, 63
 mouse 1 'Show cursor - after everything else is drawn
 
 Taskmgr 'Contains the main loop
-
+mouse 2 'Hide cursor
 MsgBox "You can now turn the computer off", 0, "Thank you", "System termination"
+mouse 2 'Show again
 Do: Loop Until InKey$ <> ""
 End
 
@@ -108,7 +110,7 @@ Sub mouse (Funk) Static
     Poke 115, 204: Poke 116, 12: Poke 117, 203
     Call Absolute(100)
     B = Peek(&HAAA)
-    H = (Peek(&HBBB) + Peek(&HBBC) * 256)
+    h = (Peek(&HBBB) + Peek(&HBBC) * 256)
     V = (Peek(&HCCC) + Peek(&HCCD) * 256)
 End Sub
 
@@ -144,7 +146,10 @@ Sub Taskmgr
         Select Case B
             Case 1: Refresh dcolor, 1
         End Select
+        'Test zegara
+        Locate 2, 71: Color 10: Print Time$
     Loop Until InKey$ = "q"
+    Color 7
     Exit Sub
 End Sub
 
@@ -202,7 +207,7 @@ Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
                     'Crank out a dollar sign on the screen
                     CharCnt% = Asc("$") - 32
                     GoTo CountCharWidthForCentering:
-              
+          
                 End If
             Else
                 CountCharWidthForCentering:
