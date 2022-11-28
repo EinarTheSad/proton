@@ -5,28 +5,24 @@ DefInt A-Z
 '--- DECLARE ---
 DECLARE SUB mouse (Funk)
 DECLARE SUB Taskmgr ()
-DECLARE SUB Refresh (col%, curshow%)
-DECLARE SUB Desktop ()
-DECLARE SUB Button (bx, by, bwidth%, bheight%, btext$, bcolor%)
+DECLARE SUB Refresh ()
+DECLARE SUB DrawButton (this AS Button)
 DECLARE SUB DrawForm (this AS Form)
 DECLARE SUB MsgBox (prompt$, addwidth%, buttontext$, title$)
 DECLARE SUB wrint (txt$, x, y, c, FontFile$, Attribs%)
 DECLARE SUB BMPLoad (bitmap$, x, y, transparency%)
 
 '--- CONSTANTS ---
-Const ATTRIB.BOLD = 1, ATTRIB.UNDERLINE = 2, ATTRIB.ITALICS = 4
-Const ALIGN.CENTER = -1, ALIGN.RIGHT = -2
+Const ATTRIB.BOLD = 1, ATTRIB.UNDERLINE = 2, ATTRIB.ITALICS = 4, ALIGN.CENTER = -1, ALIGN.RIGHT = -2
 Const SCREENX = 640, SCREENY = 480
 
 '--- COMMON VARS ---
-Common Shared B, h, V
-Common Shared dcolor As Integer
-Common Shared tbcolor As Integer
+Common Shared B, h, V, dcolor, tbcolor
 tbcolor = 1: dcolor = 3 ' Titlebar and desktop colors
 
 Screen 12: Color 15
 
-Refresh dcolor, 0
+Refresh
 'Testing window management
 Dim test As Form
 test.x = 100: test.y = 50: test.w = 400: test.h = 300: test.title = "Test window"
@@ -35,10 +31,12 @@ BMPLoad ".\logo.bmp", test.x + 2, test.y + 21, 63
 mouse 1 'Show cursor - after everything else is drawn
 
 Taskmgr 'Contains the main loop
-mouse 2 'Hide cursor
+mouse 0 'Hide cursor
 MsgBox "You can now turn the computer off", 0, "Thank you", "System termination"
-mouse 2 'Show again
-Do: Loop Until InKey$ <> ""
+mouse 1 'Show again
+Do
+    mouse 3
+Loop Until InKey$ <> ""
 End
 
 '--- MAIN CODE ENDS HERE ---
@@ -67,18 +65,11 @@ Sub BMPLoad (bitmap$, x, y, transparency%)
     Exit Sub
 End Sub
 
-Sub Button (bx, by, bwidth%, bheight%, btext$, bcolor%)
-    Line (bx, by)-(bx + bwidth%, by + bheight%), bcolor%, BF
-    Line (bx, by)-(bx + bwidth%, by + bheight%), 0, B
-    Line (bx + 1, by)-(bx + bwidth% - 1, by + bheight% - 1), 8, B
-    wrint btext$, ((bx + bwidth% / 2) - (Len(btext$) * 7 / 2)), (by + bheight% / 2) - 8, 0, "arial", 1
-    Exit Sub
-End Sub
-
-Sub Desktop
-    'Icons
-    BMPLoad ".\comp.bmp", 12, SCREENY - 48, 13
-    BMPLoad ".\dos.bmp", 12 + 32 + 16, SCREENY - 48, 13
+Sub DrawButton (this As Button)
+    Line (this.x, this.y)-(this.x + this.w, this.y + this.h), this.color, BF
+    Line (this.x, this.y)-(this.x + this.w, this.y + this.h), 0, B
+    Line (this.x + 1, this.y)-(this.x + this.w - 1, this.y + this.h - 1), 8, B
+    wrint this.label, (this.x + 12), (this.y + this.h / 2) - 8, 0, "arial", 1
     Exit Sub
 End Sub
 
@@ -99,9 +90,12 @@ Sub mouse (Funk) Static
     'This is the standard routine for mouse access
     'See QuickBasic help for the same example
     Static Crsr
-    If Funk = 1 Then Crsr = 1
-    If Funk = 2 And Crsr = 0 Then Exit Sub
-    If Funk = 2 And Crsr = 1 Then: Crsr = 0
+    Select Case Funk
+        Case 0: Crsr = 0
+        Case 1: Crsr = 1
+        Case 2: If Crsr = 0 Then Exit Sub: Else Crsr = 1
+        Case Else:
+    End Select
     Poke 100, 184: Poke 101, Funk: Poke 102, 0
     Poke 103, 205: Poke 104, 51: Poke 105, 137
     Poke 106, 30: Poke 107, 170: Poke 108, 10
@@ -122,21 +116,29 @@ Sub MsgBox (prompt$, addwidth%, buttontext$, title$)
     Dim MsgBoxForm As Form
     MsgBoxForm.x = SCREENX / 2 - windowlength% / 2
     MsgBoxForm.y = SCREENY / 2 - 40
-    MsgBoxForm.w = windowlength
+    MsgBoxForm.w = windowlength%
     MsgBoxForm.h = 82 'arbitrary
     MsgBoxForm.title = title$
     DrawForm MsgBoxForm
     BMPLoad ".\info.bmp", MsgBoxForm.x + 10, MsgBoxForm.y + 23, 13
     wrint prompt$, ((MsgBoxForm.x + 47)), MsgBoxForm.y + 31, 0, "arial", 0
-    Button ((MsgBoxForm.x + windowlength% / 2) - buttonlength% / 2), MsgBoxForm.y + 57, buttonlength%, 16, buttontext$, 7
+    Dim MsgButton As Button
+    MsgButton.x = ((MsgBoxForm.x + windowlength% / 2) - buttonlength% / 2)
+    MsgButton.y = MsgBoxForm.y + 57
+    MsgButton.w = buttonlength%
+    MsgButton.h = 16 'arbitrary
+    MsgButton.label = buttontext$
+    MsgButton.color = 7
+    DrawButton MsgButton
     Exit Sub
     'Forgive me, and if you know better - by all means, be my guest!
 End Sub
 
-Sub Refresh (col%, curshow%)
-    Line (0, 0)-(SCREENX, SCREENY), col%, BF
-    Desktop
-    If curshow% = 1 Then mouse 1
+Sub Refresh ()
+    Line (0, 0)-(SCREENX, SCREENY), dcolor, BF
+    'Icons, earlier part of DESKTOP sub
+    BMPLoad ".\comp.bmp", 12, SCREENY - 48, 13
+    BMPLoad ".\dos.bmp", 12 + 32 + 16, SCREENY - 48, 13
     Exit Sub
 End Sub
 
@@ -144,7 +146,7 @@ Sub Taskmgr
     Do
         mouse 3 'Track mouse
         Select Case B
-            Case 1: Refresh dcolor, 1
+            Case 1: Refresh
         End Select
         'Test zegara
         Locate 2, 71: Color 10: Print Time$
