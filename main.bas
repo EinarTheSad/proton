@@ -1,6 +1,6 @@
 DefInt A-Z
 '$DYNAMIC
-'$INCLUDE: '.\types.bi'
+'$INCLUDE: 'C:\PROTON\types.bi'
 
 '--- DECLARE ---
 DECLARE SUB mouse (Funk)
@@ -27,7 +27,7 @@ Refresh
 Dim test As Form
 test.x = 100: test.y = 50: test.w = 400: test.h = 300: test.title = "Test window"
 DrawForm test
-BMPLoad ".\logo.bmp", test.x + 2, test.y + 21, 63
+BMPLoad "C:\PROTON\logo.bmp", test.x + 2, test.y + 21, 63
 mouse 1 'Show cursor - after everything else is drawn
 
 Taskmgr 'Contains the main loop
@@ -120,7 +120,7 @@ Sub MsgBox (prompt$, addwidth%, buttontext$, title$)
     MsgBoxForm.h = 82 'arbitrary
     MsgBoxForm.title = title$
     DrawForm MsgBoxForm
-    BMPLoad ".\info.bmp", MsgBoxForm.x + 10, MsgBoxForm.y + 23, 13
+    BMPLoad "C:\PROTON\info.bmp", MsgBoxForm.x + 10, MsgBoxForm.y + 23, 13
     wrint prompt$, ((MsgBoxForm.x + 47)), MsgBoxForm.y + 31, 0, "arial", 0
     Dim MsgButton As Button
     MsgButton.x = ((MsgBoxForm.x + windowlength% / 2) - buttonlength% / 2)
@@ -137,8 +137,8 @@ End Sub
 Sub Refresh ()
     Line (0, 0)-(SCREENX, SCREENY), dcolor, BF
     'Icons, earlier part of DESKTOP sub
-    BMPLoad ".\comp.bmp", 12, SCREENY - 48, 13
-    BMPLoad ".\dos.bmp", 12 + 32 + 16, SCREENY - 48, 13
+    BMPLoad "C:\PROTON\comp.bmp", 12, SCREENY - 48, 13
+    BMPLoad "C:\PROTON\dos.bmp", 12 + 32 + 16, SCREENY - 48, 13
     Exit Sub
 End Sub
 
@@ -169,7 +169,7 @@ Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
     Dim Char As FontCharInfo
     OrgAttribs% = Attribs%
 
-    FontFile$ = ".\" + FontFile$ + ".fnt"
+    FontFile$ = "C:\PROTON\" + FontFile$ + ".fnt"
 
     Handle = FreeFile
     Open FontFile$ For Binary As #Handle
