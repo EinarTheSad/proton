@@ -1,365 +1,173 @@
-DefInt A-Z
-'$DYNAMIC
-'$INCLUDE: 'C:\PROTON\types.bi'
+#include "types.bi"
+#include "fbgfx.bi"
+Using FB
 
 '--- DECLARE ---
-DECLARE SUB mouse (Funk)
-DECLARE SUB Taskmgr ()
-DECLARE SUB Refresh ()
-DECLARE SUB DrawButton (this AS Button)
-DECLARE SUB DrawForm (this AS Form)
-DECLARE SUB MsgBox (prompt$, addwidth%, buttontext$, title$)
-DECLARE SUB wrint (txt$, x, y, c, FontFile$, Attribs%)
-DECLARE SUB BMPLoad (bitmap$, x, y, transparency%)
+DECLARE FUNCTION colfont (ByVal source_pixel As ulong, ByVal destination_pixel As ulong, ByVal parameter As Any Ptr) As ulong
+DECLARE SUB mouse (Funk as byte)
+DECLARE SUB Taskmgr
+DECLARE SUB Refresh
+DECLARE SUB DrawButton (this As Button)
+DECLARE SUB DrawForm (this As Form)
+DECLARE SUB MsgBox (prompt as string, addwidth as integer, buttontext as string, title as string)
+DECLARE SUB wrint (txt as string, x as integer, y as integer, c as integer, FontName as string, isBold As integer)
+DECLARE SUB BMPLoad (bitmap As String, x As integer, y as integer)
 
 '--- CONSTANTS ---
-Const ATTRIB.BOLD = 1, ATTRIB.UNDERLINE = 2, ATTRIB.ITALICS = 4, ALIGN.CENTER = -1, ALIGN.RIGHT = -2
 Const SCREENX = 640, SCREENY = 480
 
 '--- COMMON VARS ---
-Common Shared B, h, V, dcolor, tbcolor
-tbcolor = 1: dcolor = 3 ' Titlebar and desktop colors
+Dim Shared As Integer B, H, V, dcolor, tbcolor, cfnt
+Dim Shared As Event handler
+tbcolor = &H0000AA: dcolor = &H007482 ' Titlebar and desktop colors
 
-Screen 12: Color 15
+ScreenRes SCREENX, SCREENY, 32
+width 80, 30
+Cls
 
 Refresh
-'Testing window management
 Dim test As Form
 test.x = 100: test.y = 50: test.w = 400: test.h = 300: test.title = "Test window"
-DrawForm test
-BMPLoad "C:\PROTON\logo.bmp", test.x + 2, test.y + 21, 63
-mouse 1 'Show cursor - after everything else is drawn
+DrawForm(test)
+BMPLoad(".\logo.bmp", test.x + 2, test.y + 20)
+mouse(1) 'Show cursor - after everything else is drawn
 
 Taskmgr 'Contains the main loop
-mouse 0 'Hide cursor
-MsgBox "You can now turn the computer off", 0, "Thank you", "System termination"
-mouse 1 'Show again
-Do
-    mouse 3
-Loop Until InKey$ <> ""
+mouse(0) 'Hide cursor
+MsgBox "This will end your Proton session", -10, "OK", "System termination"
+mouse(1) 'Show again
+Do:Loop Until inkey$ = "q"
 End
 
 '--- MAIN CODE ENDS HERE ---
 
 '--- SUBS ---
 
-Sub BMPLoad (bitmap$, x, y, transparency%)
-    Dim BmpHeader As BMPHeaderType: hdl& = FreeFile
-    Open bitmap$ For Binary As hdl&
-    Get #1, , BmpHeader
-    Pixel$ = Space$(BmpHeader.wid) 'Loading a whole line at once
-    iHeight% = BmpHeader.hei - 1
-    iWidth% = BmpHeader.wid - 1
-    View (x, y)-(x + iWidth%, y + iHeight%) 'Coordinates for the specific icon area
-    For y% = iHeight% To 0 Step -1
-        Get #1, , Pixel$
-        For x% = 0 To iWidth%
-            c% = Asc(Mid$(Pixel$, x% + 1, 1))
-            If c% <> transparency% Then
-                PSet (x%, y%), c%
-            Else
-                'just do nothing, because it's transparent
-            End If
-    Next x%, y%: Close hdl&
-    View (0, 0)-(SCREENX - 1, SCREENY - 1) 'Reset the coordinates
-    Exit Sub
+Sub BMPLoad (bitmap As String, x As integer, y as integer)
+    Dim As Long hdl
+    Dim As Integer w, h
+    Dim As Any Ptr BMP
+
+    hdl = FreeFile()
+    Open bitmap For Binary Access Read As #hdl
+    ' Get bitmap dimensions from the file
+    Get #hdl, 19, w
+    Get #hdl, 23, h
+    Close #hdl
+    
+    BMP = ImageCreate(w, Abs(h))
+
+    BLoad bitmap, BMP
+    Put (x, y), BMP, Trans
+    ImageDestroy(BMP)
 End Sub
 
 Sub DrawButton (this As Button)
-    Line (this.x, this.y)-(this.x + this.w, this.y + this.h), this.color, BF
-    Line (this.x, this.y)-(this.x + this.w, this.y + this.h), 0, B
-    Line (this.x + 1, this.y)-(this.x + this.w - 1, this.y + this.h - 1), 8, B
-    wrint this.label, (this.x + 12), (this.y + this.h / 2) - 8, 0, "arial", 1
+    Line (this.x, this.y)-(this.x + this.w, this.y + this.h), &HAAAAAA, BF 'main area
+    Line (this.x, this.y)-(this.x + this.w, this.y + this.h), 0, B 'initial black outline
+    Line (this.x + 1, this.y+1)-(this.x + this.w - 1, this.y + this.h - 1), &H555555, B 'dark gray frame
+    Line (this.x + 2, this.y+1)-(this.x + this.w - 2, this.y + 1), &HDCDCDC 'light features
+    Line (this.x + 1, this.y+1)-(this.x + 1, this.y + this.h - 2), &HDCDCDC 'to make it 3D
+    wrint (this.label, this.x + this.w/2-len(this.label)*5, (this.y + this.h / 2) - 4, 0, "arial", 1) 'caption
     Exit Sub
 End Sub
 
 Sub DrawForm (this As Form)
-    Line (this.x, this.y)-(this.x + this.w, this.y + 20), tbcolor, BF 'titlebar
-    Line ((this.x + this.w - 18), this.y + 4)-((this.x + this.w - 4), this.y + 18), 7, BF 'x button
-    Line ((this.x + this.w - 19), this.y + 3)-((this.x + this.w - 3), this.y + 19), 8, B 'or rather 3.1 kind of thing
-    Line ((this.x + this.w - 14), this.y + 11)-((this.x + this.w - 6), this.y + 13), 8, B 'some shadow
-    Line ((this.x + this.w - 15), this.y + 10)-((this.x + this.w - 7), this.y + 12), 15, BF 'and the - sign
-    wrint this.title, this.x + 5, this.y + 3, 15, "arial", 1 'title, of course
-    Line (this.x, this.y + 21)-(this.x + this.w, this.y + this.h), 15, BF 'main area
-    Line (this.x, this.y)-(this.x + this.w, this.y + this.h), 8, B 'frame 1
-    Line (this.x + 1, this.y + 1)-(this.x + this.w - 1, this.y + this.h - 1), 7, B 'frame 2
+    Line (this.x, this.y)-(this.x + this.w, this.y + 19), tbcolor, BF 'titlebar
+    Line ((this.x + this.w - 17), this.y + 4)-((this.x + this.w - 4), this.y + 17), &HAAAAAA, BF 'x button
+    Line ((this.x + this.w - 18), this.y + 3)-((this.x + this.w - 3), this.y + 18), &H555555, B 'or rather 3.1 kind of thing
+    Line ((this.x + this.w - 13), this.y + 11)-((this.x + this.w - 6), this.y + 12), &H555555, B 'some shadow
+    Line ((this.x + this.w - 14), this.y + 10)-((this.x + this.w - 7), this.y + 11), &HFFFFFF, BF 'and the - sign
+    wrint (this.title, this.x + 6, this.y + 6, &HFFFFFF, "arial", 1) 'title, of course
+    Line (this.x, this.y + 20)-(this.x + this.w, this.y + this.h), &HFFFFFF, BF 'main area
+    Line (this.x, this.y)-(this.x + this.w, this.y + this.h), &H555555, B 'frame 1
+    Line (this.x + 1, this.y + 1)-(this.x + this.w - 1, this.y + this.h - 1), &HAAAAAA, B 'frame 2
     Exit Sub
 End Sub
 
-Sub mouse (Funk) Static
-    'This is the standard routine for mouse access
-    'See QuickBasic help for the same example
-    Static Crsr
-    Select Case Funk
-        Case 0: Crsr = 0
-        Case 1: Crsr = 1
-        Case 2: If Crsr = 0 Then Exit Sub: Else Crsr = 1
-        Case Else:
-    End Select
-    Poke 100, 184: Poke 101, Funk: Poke 102, 0
-    Poke 103, 205: Poke 104, 51: Poke 105, 137
-    Poke 106, 30: Poke 107, 170: Poke 108, 10
-    Poke 109, 137: Poke 110, 14: Poke 111, 187
-    Poke 112, 11: Poke 113, 137: Poke 114, 22
-    Poke 115, 204: Poke 116, 12: Poke 117, 203
-    Call Absolute(100)
-    B = Peek(&HAAA)
-    h = (Peek(&HBBB) + Peek(&HBBC) * 256)
-    V = (Peek(&HCCC) + Peek(&HCCD) * 256)
+Sub mouse (Funk as byte)
+    SetMouse(,, Funk)
 End Sub
 
-Sub MsgBox (prompt$, addwidth%, buttontext$, title$)
+Sub MsgBox (prompt as string, addwidth as integer, buttontext as string, title as string)
     'Okay, this is an absolute mess.
     'All the math is here to center the layout
-    windowlength% = (Len(prompt$) * 6) + 60 + addwidth% '60 is an eyeballed value
-    buttonlength% = Len(buttontext$) * 8 + 15 'Why the varying character length? Eyeballed too!
+    Dim As Integer windowlength, buttonlength
+    windowlength = (Len(prompt) * 6) + 60 + addwidth '60 is an eyeballed value, 6 is mean character width
+    buttonlength = 64 'Len(buttontext) * 6 + 17
     Dim MsgBoxForm As Form
-    MsgBoxForm.x = SCREENX / 2 - windowlength% / 2
+    MsgBoxForm.x = SCREENX / 2 - windowlength / 2
     MsgBoxForm.y = SCREENY / 2 - 40
-    MsgBoxForm.w = windowlength%
+    MsgBoxForm.w = windowlength
     MsgBoxForm.h = 82 'arbitrary
-    MsgBoxForm.title = title$
+    MsgBoxForm.title = title
     DrawForm MsgBoxForm
-    BMPLoad "C:\PROTON\info.bmp", MsgBoxForm.x + 10, MsgBoxForm.y + 23, 13
-    wrint prompt$, ((MsgBoxForm.x + 47)), MsgBoxForm.y + 31, 0, "arial", 0
+    BMPLoad ".\info.bmp", MsgBoxForm.x + 10, MsgBoxForm.y + 23
+    wrint prompt, ((MsgBoxForm.x + 50)), MsgBoxForm.y + 34, 0, "arial", 0
     Dim MsgButton As Button
-    MsgButton.x = ((MsgBoxForm.x + windowlength% / 2) - buttonlength% / 2)
+    MsgButton.x = ((MsgBoxForm.x + windowlength / 2) - buttonlength / 2)
     MsgButton.y = MsgBoxForm.y + 57
-    MsgButton.w = buttonlength%
-    MsgButton.h = 16 'arbitrary
-    MsgButton.label = buttontext$
-    MsgButton.color = 7
+    MsgButton.w = buttonlength
+    MsgButton.h = 19 'arbitrary
+    MsgButton.label = buttontext
     DrawButton MsgButton
     Exit Sub
     'Forgive me, and if you know better - by all means, be my guest!
 End Sub
 
 Sub Refresh ()
-    Line (0, 0)-(SCREENX, SCREENY), dcolor, BF
-    'Icons, earlier part of DESKTOP sub
-    BMPLoad "C:\PROTON\comp.bmp", 12, SCREENY - 48, 13
-    BMPLoad "C:\PROTON\dos.bmp", 12 + 32 + 16, SCREENY - 48, 13
+    Cls: Paint(1,1),dcolor
+	BMPLoad ".\logo.bmp", (SCREENX/2)-44, (SCREENY/2)-103
+    BMPLoad ".\comp.bmp", 12, SCREENY - 48
+    BMPLoad ".\dos.bmp", 12 + 32 + 16, SCREENY - 48
     Exit Sub
 End Sub
 
 Sub Taskmgr
     Do
-        mouse 3 'Track mouse
-        Select Case B
-            Case 1: Refresh
+        If (ScreenEvent(@handler)) Then
+        Select Case As Const handler.Type
+        Case EVENT_MOUSE_BUTTON_PRESS
+            Refresh
+        Case Else
+            'foobar
         End Select
+        End If
         'Test zegara
-        Locate 2, 71: Color 10: Print Time$
+        Locate 2, 71: Color &H00FF00: Print Time$
+        sleep 1
     Loop Until InKey$ = "q"
     Color 7
     Exit Sub
 End Sub
 
-Sub wrint (txt$, x, y, c, FontFile$, Attribs%)
-    'WinFontsQB by Josh Heaton
-    'font: displays a string of text.
-
-
-    ' $b toggles bold
-    ' $u toggles underlining
-    ' $i toggles italics
-    ' $$ prints 1 $
-    ' $c changes text color at draw-time
-
-    Dim Char As FontCharInfo
-    OrgAttribs% = Attribs%
-
-    FontFile$ = "C:\PROTON\" + FontFile$ + ".fnt"
-
-    Handle = FreeFile
-    Open FontFile$ For Binary As #Handle
-    If LOF(Handle) = 0 Then
-        Close #Handle
-        Kill FontFile$
-        Exit Sub
-    End If
-
-    Version% = 0
-    Get #Handle, , Version%
-    If (Version% Mod 256 <> 0) Or (Version% \ 256 <> 1) Then
-        'Incorrect version
-        Close #Handle
-        Exit Sub
-    End If
-
-    ty& = y%
-     
-    If x% = ALIGN.CENTER Then
-        tx& = 0
-        Widest& = 0
-        FixLR% = 0
-        For i% = 1 To Len(txt$)
-            CharCnt% = Asc(Mid$(txt$, i%, 1)) - 32
-            If CharCnt% = -19 Then
-                If tx& > Widest& Then Widest& = tx&: tx& = 0
-                FixLR% = 1
-            ElseIf CharCnt% = Asc("$") - 32 Then
-                'Special formatting code
-                i% = i% + 1
-                Code$ = LCase$(Mid$(txt$, i%, 1))
-                'IF code$ = "b" THEN GOSUB ToggleBold       ' Don't run these
-                'IF code$ = "u" THEN GOSUB ToggleUnderline  ' on centering
-                'IF code$ = "i" THEN GOSUB ToggleItalics    ' just yet...
-                If Code$ = "$" Then
-                    'Crank out a dollar sign on the screen
-                    CharCnt% = Asc("$") - 32
-                    GoTo CountCharWidthForCentering:
-          
-                End If
-            Else
-                CountCharWidthForCentering:
-                Seek #Handle, (2 + 2 + 4) * CharCnt% + 1 + 2
-                Get #Handle, , Char
-                tx& = tx& + Char.CharWidth
-            End If
-        Next
-        If tx& > Widest& Then Widest& = tx&
-        tx& = (SCREENX \ 2) - (tx& \ 2)
-    ElseIf x% = ALIGN.RIGHT Then
-        tx& = 0
-        Widest& = 0
-        FixLR% = 0
-        For i% = 1 To Len(txt$)
-            CharCnt% = Asc(Mid$(txt$, i%, 1)) - 32
-            If CharCnt% = -19 Then
-                If tx& > Widest& Then Widest& = tx&: tx& = 0
-                FixLR% = 1
-            ElseIf CharCnt% = Asc("$") - 32 Then
-                'Special formatting code
-                i% = i% + 1
-                Code$ = LCase$(Mid$(txt$, i%, 1))
-                If Code$ = "$" Then
-                    'Crank out a dollar sign on the screen
-                    CharCnt% = Asc("$") - 32
-                    GoTo CountCharWidthForRight:
-                End If
-            Else
-                CountCharWidthForRight:
-                Seek #Handle, (2 + 2 + 4) * CharCnt% + 1 + 2
-                Get #Handle, , Char
-                tx& = tx& + Char.CharWidth
-            End If
-        Next
-        If tx& > Widest& Then Widest& = tx&
-        tx& = SCREENX - tx&
+Sub wrint (txt as string, x as integer, y as integer, c as integer, FontName as string, isBold As Integer)
+    
+    Dim As String FontPath = "./" + FontName + ".bmp"
+	Dim As Long hdl = FreeFile()
+	Dim As Integer w, h
+    Open FontPath For Binary Access Read As #hdl
+    ' Get bitmap dimensions from the file
+    Get #hdl, 19, w
+    Get #hdl, 23, h
+    Close #hdl
+    Dim as any ptr raw = ImageCreate(w, h)
+    bload FontPath, raw
+    cfnt = c
+    If isBold = 0 Then
+        Draw String (x,y), txt ,, raw, custom, @colfont
     Else
-        tx& = x%
+        Draw String (x,y), txt ,, raw, custom, @colfont
+        Draw String (x+1,y), txt ,, raw, custom, @colfont 'Making the font bolder by printing the same string two times, shifted one pixel
     End If
-    ttx& = tx&
-    For i% = 1 To Len(txt$)
-        CharCnt% = Asc(Mid$(txt$, i%, 1))
-        FixLR% = 0
-        If CharCnt% = 13 Then
-            'Line return, fix it
-            FixLR% = 1
-            CharCnt% = Asc("A") - 32
-        ElseIf CharCnt% = Asc("$") Then
-            'Special formatting code
-            i% = i% + 1
-            Code$ = LCase$(Mid$(txt$, i%, 1))
-            If Code$ = "b" Then GoSub ToggleBold: CharCnt% = -1
-            If Code$ = "u" Then GoSub ToggleUnderline: CharCnt% = -1
-            If Code$ = "i" Then GoSub ToggleItalics: CharCnt% = -1
-            If Code$ = "c" Then GoSub SetTempColor: CharCnt% = -1
-       
-            If Code$ = "$" Then
-                'Crank out a dollar sign on the screen
-                CharCnt% = Asc("$") - 32
-            End If
-        ElseIf CharCnt% < 32 Or CharCnt% > 126 Then
-            CharCnt% = 127
-        Else
-            CharCnt% = CharCnt% - 32
-        End If
-        If CharCnt% > -1 Then
-            Seek #Handle, (2 + 2 + 4) * CharCnt% + 1 + 2
-            Get #Handle, , Char
-            Seek #Handle, Char.FileOffset
-            ReDim CharDat&(Char.CharHeight)
-            If FixLR% <> 0 Then
-                'Do a line return
-                ttx& = tx&
-                ty& = ty& + Char.CharHeight
-                FixLR% = 0
-            Else
-                'Draw char on screen
-                If CharCnt% <> 0 Then
-                    'Don't draw a space because there is a bug for some reason.
-                    For cty% = 0 To Char.CharHeight - 1
-                        t% = 0
-                        Get #Handle, , t%
-                        CharDat&(cty%) = t%
-                        offset% = 0
-                        If (Attribs% And ATTRIB.ITALICS) <> 0 Then offset% = -cty% / 3
-                        Line (ttx& + offset%, ty& + cty%)-(ttx& + 16 + offset%, ty& + cty%), c%, , CharDat&(cty%) ' MOD 32767
-                        If (Attribs% And ATTRIB.BOLD) <> 0 Then
-                            Line (ttx& + offset% + 1, ty& + cty%)-(ttx& + 17 + offset%, ty& + cty%), c%, , CharDat&(cty%) ' MOD 32767
-                        End If
-                    Next
-                End If
-                If (Attribs% And ATTRIB.UNDERLINE) <> 0 Then Line (ttx&, Char.CharHeight - 2 + ty&)-(ttx& + Char.CharWidth, Char.CharHeight - 2 + ty&), c%
-                ttx& = ttx& + Char.CharWidth
-            End If
-        End If
-    Next
-
-    Close #Handle
-
-    Attribs% = OrgAttribs%
-
-    Exit Sub
-
-    ToggleBold:
-
-    If (Attribs% And ATTRIB.BOLD) <> 0 Then
-        Attribs% = Attribs% - ATTRIB.BOLD
-    Else
-        Attribs% = Attribs% + ATTRIB.BOLD
-    End If
-
-    Return
-
-    ToggleUnderline:
-
-    If (Attribs% And ATTRIB.UNDERLINE) <> 0 Then
-        Attribs% = Attribs% - ATTRIB.UNDERLINE
-    Else
-        Attribs% = Attribs% + ATTRIB.UNDERLINE
-    End If
-
-    Return
-
-    ToggleItalics:
-
-    If (Attribs% And ATTRIB.ITALICS) <> 0 Then
-        Attribs% = Attribs% - ATTRIB.ITALICS
-    Else
-        Attribs% = Attribs% + ATTRIB.ITALICS
-    End If
-
-    Return
-
-    SetTempColor:
-
-    clr$ = ""
-
-    i% = i% + 1 'Get past the "c"
-
-    While InStr("0123456789", Mid$(txt$, i%, 1))
-        clr$ = clr$ + Mid$(txt$, i%, 1)
-        i% = i% + 1
-    Wend
-
-    i% = i% - 1 'Back up one char
-
-    c% = Val(clr$)
-
-    Return
-    Exit Sub
+    ImageDestroy(raw)
+    Exit Sub    
 End Sub
 
+Function colfont (ByVal source_pixel As ulong, ByVal destination_pixel As ulong, ByVal parameter As Any Ptr) As ulong
+    If source_pixel = RGB(0,0,0) Then
+        Return destination_pixel
+    Else
+        Return cfnt
+    End If
+End Function
