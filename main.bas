@@ -21,7 +21,7 @@ DECLARE SUB Refresh ()
 '--- COMMON VARS ---
 Common Shared As Event handler
 tbcolor = &H0000AA: dcolor = &H007482 ' Titlebar and desktop colors
-SCREENX = 640: SCREENY = 480 'Default resolution
+SCREENX = 800: SCREENY = 600 'Default resolution
 
 '--- BOOT ROUTINE ---
 Cls
@@ -30,17 +30,16 @@ Print "Provided by EinarTheSad, 2022"
 
 '--- MAIN CODE ---
 Cls
-ScreenRes SCREENX, SCREENY, 32 : width 80,30
-Dim Shared As Byte Ptr sbuffer: sbuffer = ScreenPtr
+ScreenRes SCREENX, SCREENY, 32
+'Dim Shared As Byte Ptr sbuffer: sbuffer = ScreenPtr
 
 'Load the wallpaper into memory
-Dim Shared As Image ptr wlp
 wlp = ImageCreate(800,600)
 Bload "./sky.bmp", wlp
 
 Refresh
-Dim foobar As Form = Form (100,50,400,300,"Test window",1)
-foobar.Show()
+Dim Shared foobar As Form
+foobar = Form (100,50,400,300,"Test window",1)
 BMPLoad(".\logo.bmp", foobar.x + 2, foobar.y + 20)
 Taskmgr 'Contains the main loop
 'If we're out of Taskmgr, it means we are finishing
@@ -59,9 +58,11 @@ Loop
 '--- SUBS (DON'T PUT LONG ROUTINES HERE) ---
 
 Sub Clock ()
-    line (SCREENX-92, 18)-(SCREENX-17,36), 0, bf
-    wrint (Time$, SCREENX-90, 20, &H00FF00, "digital", 0)
-    Exit Sub
+    View (SCREENX-92, 18)-(SCREENX-17, 36)
+    ScreenLock()
+    Cls: wrint (Time$, 2, 2, &H00FF00, "digital", 0)
+    ScreenUnlock()
+    View (0,0)-(SCREENX, SCREENY)
 End Sub
 
 Sub mouse (Funk as byte)
@@ -69,11 +70,12 @@ Sub mouse (Funk as byte)
 End Sub
 
 Sub Refresh ()
-    'Dim As Long x, y: ScreenInfo( , y, , , x )
-    'ScreenLock(): Clear *sbuffer, 0, x*y : ScreenUnlock() 'This is a faster version of CLS, filling the buffer with color byte
+    ScreenLock()
     Put (0, 0-(600-SCREENY)), wlp, pset
+    'Icon placeholders
     BMPLoad ".\comp.bmp", 12, SCREENY - 48
     BMPLoad ".\dos.bmp", 12 + 32 + 16, SCREENY - 48
+    ScreenUnlock()
     Exit Sub
 End Sub
 
@@ -82,13 +84,13 @@ Sub Taskmgr
         If (ScreenEvent(@handler)) Then
         Select Case As Const handler.Type
         Case EVENT_MOUSE_BUTTON_PRESS
-            Refresh
+            foobar.Hide ()
         Case Else
             'foobar
         End Select
         End If
         Clock ()
-        sleep 10, 1
+        sleep 10, 1 'only for modern PCs, turn off in DOSBOX
     Loop Until InKey$ = "q"
     Exit Sub
 End Sub

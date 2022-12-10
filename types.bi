@@ -1,9 +1,12 @@
+#include "fbgfx.bi"
+Using FB
 DECLARE FUNCTION colfont (ByVal source_pixel As ulong, ByVal destination_pixel As ulong, ByVal parameter As Any Ptr) As ulong
 DECLARE SUB BMPLoad (bitmap As String, x As integer, y as integer)
 DECLARE SUB MsgBox (prompt as string, addwidth as integer, buttontext as string, title as string)
 DECLARE SUB wrint (txt as string, x as integer, y as integer, c as integer, FontName as string, isBold As integer)
 
 Common Shared As Integer SCREENX, SCREENY, dcolor, tbcolor, cfnt
+Common Shared As Image ptr wlp, forewindow
 Common Shared As Byte pid
 
 TYPE Button
@@ -27,12 +30,14 @@ Constructor Button (x As Integer, y As Integer, w As Integer, h As Integer, labe
 End Constructor
 
 Sub Button.Show ()
+    ScreenLock()
     Line (x, y)-(x + w, y + h), &HAAAAAA, BF 'main area
     Line (x, y)-(x + w, y + h), 0, B 'initial black outline
     Line (x + 1, y+1)-(x + w - 1, y + h - 1), &H555555, B 'dark gray frame
     Line (x + 2, y+1)-(x + w - 2, y + 1), &HDCDCDC 'light features
     Line (x + 1, y+1)-(x + 1, y + h - 2), &HDCDCDC 'to make it 3D
     wrint (label, x + w/2-len(label)*5, (y + h / 2) - 4, 0, "arial", 1) 'caption
+    ScreenUnlock()
     Exit Sub
 End Sub
 
@@ -44,10 +49,15 @@ TYPE Form
     title AS STRING
     isFocus AS BYTE
     isShown AS BYTE
+    Declare Constructor ()
+    'Declare Destructor ()
     Declare Constructor (As Integer, As Integer, As Integer, As Integer, As String, As Byte)
     Declare Sub Show ()
-    'Declare Destructor ()
+    Declare Sub Hide ()
 END TYPE
+
+Constructor Form ()
+End Constructor
 
 Constructor Form (x As Integer, y As Integer, w As Integer, h As Integer, title As String, isShown As Byte)
     this.x = x
@@ -56,9 +66,16 @@ Constructor Form (x As Integer, y As Integer, w As Integer, h As Integer, title 
     this.h = h
     this.title = title
     this.isShown = isShown
+    If isShown = 1 Then Show()
 End Constructor
 
+'Destructor Form ()
+'    Hide ()
+'End Destructor
+
 Sub Form.Show ()
+    ScreenLock()
+    forewindow = ImageCreate(x+w,y+h) : Get (x,y)-(x+w,y+h), forewindow
     Line (x, y)-(x + w, y + 19), tbcolor, BF 'titlebar
     Line ((x + w - 17), y + 4)-((x + w - 4), y + 17), &HAAAAAA, BF 'x button
     Line ((x + w - 18), y + 3)-((x + w - 3), y + 18), &H555555, B 'or rather 3.1 kind of thing
@@ -68,6 +85,17 @@ Sub Form.Show ()
     Line (x, y + 20)-(x + w, y + h), &HFFFFFF, BF 'main area
     Line (x, y)-(x + w, y + h), &H555555, B 'frame 1
     Line (x + 1, y + 1)-(x + w - 1, y + h - 1), &HAAAAAA, B 'frame 2
+    ScreenUnlock()
+    isShown = 1
+    Exit Sub
+End Sub
+
+Sub Form.Hide ()
+    View (x,y)-(x+w,y+h)
+    ScreenLock(): Put (0, 0), forewindow, pset
+    ScreenUnlock()
+    View (0,0)-(SCREENX, SCREENY)
+    isShown = 0
     Exit Sub
 End Sub
 
@@ -93,6 +121,7 @@ Sub BMPLoad (bitmap As String, x As integer, y as integer)
     BLoad bitmap, BMP
     Put (x, y), BMP, Trans
     ImageDestroy(BMP)
+    Exit Sub
 End Sub
 
 Sub MsgBox (prompt as string, addwidth as integer, buttontext as string, title as string)
@@ -111,7 +140,6 @@ Sub MsgBox (prompt as string, addwidth as integer, buttontext as string, title a
 End Sub
 
 Sub wrint (txt as string, x as integer, y as integer, c as integer, FontName as string, isBold As Integer)
-    
     Dim As String FontPath = "./" + FontName + ".bmp"
 	Dim As Long hdl = FreeFile()
 	Dim As Integer w, h
